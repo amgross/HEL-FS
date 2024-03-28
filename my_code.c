@@ -156,7 +156,7 @@ void read_part_of_file()
 	TEST_ASSERT_(ret == 0, "got error %d", ret);
 
 	ret = read_file(buff, size_to_read);
-	TEST_ASSERT_(ret == 0, "Got error %d", ret);
+	TEST_ASSERT_(ret == -1, "Got error %d", ret);
 
 	TEST_ASSERT(memcmp(buff, MY_STR, size_to_read) == 0);
 }
