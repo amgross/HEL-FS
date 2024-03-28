@@ -6,7 +6,7 @@
 #include <string.h>
 
 
-#define MY_STR "hello world\n"
+#define MY_STR "hello world!\n"
 
 #define MEM_SIZE 0x100
 
