@@ -1,0 +1,23 @@
+
+name: Build and Test C Code
+
+on:
+  pull_request:
+    branches: [master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Install build essentials
+      run: sudo apt-get install build-essential -y
+
+    - name: Compile C code
+      run: gcc -o my_program my_code.c
+
+    - name: Run tests
+      run: ./my_program
