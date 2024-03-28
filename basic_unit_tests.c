@@ -140,6 +140,17 @@ void write_read_multiple_files()
 	TEST_ASSERT(memcmp(buff, MY_STR2, sizeof(MY_STR2)) == 0);
 }
 
+void null_params_test()
+{
+	hel_ret ret;
+
+	ret = init_fs();
+	TEST_ASSERT_(ret == 0, "Got error %d", ret);
+
+	ret = create_and_write(MY_STR, sizeof(MY_STR), NULL);
+	TEST_ASSERT_(ret == hel_param_err, "expected error hel_param_err-%d but got %d", hel_param_err, ret);
+}
+
 TEST_LIST = {
     { "basic-test", basic_test },
 	{ "write_too_big_test", write_too_big_test},
@@ -147,5 +158,6 @@ TEST_LIST = {
 	{ "read_out_of_boundaries_test", read_out_of_boundaries_test},
 	{ "read_part_of_file_test", read_part_of_file_test},
 	{ "write_read_multiple_files", write_read_multiple_files},
+	{ "null_params_test", null_params_test},
     { NULL, NULL }
 };
