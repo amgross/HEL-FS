@@ -15,7 +15,7 @@
 void basic_test()
 {
 	file_id id;
-	helfs_ret ret;
+	hel_ret ret;
 	char buff[100];
 	buff[0] = 0;
 
@@ -34,20 +34,20 @@ void basic_test()
 void write_too_big_test()
 {
 	file_id id;
-	helfs_ret ret;
+	hel_ret ret;
 	char buff[MEM_SIZE * 2];
 
 	ret = init_fs();
 	TEST_ASSERT_(ret == 0, "Got error %d", ret);
 
 	ret = create_and_write(buff, sizeof(buff), &id);
-	TEST_ASSERT_(ret == helfs_mem_err, "expected error helfs_mem_err-%d but got %d", helfs_mem_err, ret);
+	TEST_ASSERT_(ret == hel_mem_err, "expected error hel_mem_err-%d but got %d", hel_mem_err, ret);
 
 	ret = create_and_write(buff, MEM_SIZE, &id);
-	TEST_ASSERT_(ret == helfs_mem_err, "expected error helfs_mem_err-%d but got %d", helfs_mem_err, ret);
+	TEST_ASSERT_(ret == hel_mem_err, "expected error hel_mem_err-%d but got %d", hel_mem_err, ret);
 
 	ret = create_and_write(buff, MEM_SIZE - MIN_FILE_SIZE + 1, &id);
-	TEST_ASSERT_(ret == helfs_mem_err, "expected error helfs_mem_err-%d but got %d", helfs_mem_err, ret);
+	TEST_ASSERT_(ret == hel_mem_err, "expected error hel_mem_err-%d but got %d", hel_mem_err, ret);
 
 	ret = create_and_write(buff, MEM_SIZE - MIN_FILE_SIZE, &id);
 	TEST_ASSERT_(ret == 0, "got error - %d", ret);
@@ -56,7 +56,7 @@ void write_too_big_test()
 void write_exact_size_test()
 {
 	file_id id;
-	helfs_ret ret;
+	hel_ret ret;
 	char buff[MEM_SIZE];
 	char out_buff[sizeof(buff)];
 	int size_to_write = MEM_SIZE - MIN_FILE_SIZE;
@@ -76,7 +76,7 @@ void write_exact_size_test()
 void read_out_of_boundaries_test()
 {
 	file_id id;
-	helfs_ret ret;
+	hel_ret ret;
 	char buff[100];
 	buff[0] = 0;
 
@@ -87,13 +87,13 @@ void read_out_of_boundaries_test()
 	TEST_ASSERT_(ret == 0, "got error %d", ret);
 
 	ret = read_file(id, buff, sizeof(MY_STR) + 1);
-	TEST_ASSERT_(ret == helfs_boundaries_err, "expected error helfs_boundaries_err-%d but got %d", helfs_boundaries_err, ret);
+	TEST_ASSERT_(ret == hel_boundaries_err, "expected error hel_boundaries_err-%d but got %d", hel_boundaries_err, ret);
 }
 
 void read_part_of_file_test()
 {
 	file_id id;
-	helfs_ret ret;
+	hel_ret ret;
 	char buff[100];
 	buff[0] = 0;
 	int size_to_read = sizeof(MY_STR) - 1;
@@ -113,7 +113,7 @@ void read_part_of_file_test()
 void write_read_multiple_files()
 {
 	file_id id1, id2;
-	helfs_ret ret;
+	hel_ret ret;
 	char buff[100];
 	buff[0] = 0;
 
@@ -132,7 +132,7 @@ void write_read_multiple_files()
 	TEST_ASSERT(memcmp(buff, MY_STR, sizeof(MY_STR)) == 0);
 
 	ret = read_file(id2, buff, sizeof(MY_STR2) + 1);
-	TEST_ASSERT_(ret == helfs_boundaries_err, "expected error helfs_boundaries_err-%d but got %d", helfs_boundaries_err, ret);
+	TEST_ASSERT_(ret == hel_boundaries_err, "expected error hel_boundaries_err-%d but got %d", hel_boundaries_err, ret);
 
 	ret = read_file(id2, buff, sizeof(MY_STR2));
 	TEST_ASSERT_(ret == 0, "got error %d", ret);
