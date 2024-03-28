@@ -17,7 +17,7 @@ jobs:
       run: sudo apt-get install build-essential -y
 
     - name: Compile C code
-      run: gcc -o my_program my_code.c
+      run: make
 
     - name: Run tests
-      run: ./my_program
+      run: make test
