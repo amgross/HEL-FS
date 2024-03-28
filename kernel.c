@@ -14,11 +14,11 @@ typedef struct my_code
 }file;
 
 
-helfs_ret init_fs()
+hel_ret init_fs()
 {
 	memset(mem_buff, 0, MEM_SIZE);
 	
-	return helfs_success;
+	return hel_success;
 }
 
 file *find_empty_place(int size)
@@ -38,19 +38,19 @@ file *find_empty_place(int size)
 	}
 }
 
-helfs_ret create_and_write(char *in, int size, file_id *out_id)
+hel_ret create_and_write(char *in, int size, file_id *out_id)
 {
 	file *new_file;
 
 	if(NULL == out_id)
 	{
-		return halfs_param_err;
+		return hel_param_err;
 	}
 	
 	new_file = find_empty_place(size);
 	if(new_file == NULL)
 	{
-		return helfs_mem_err;
+		return hel_mem_err;
 	}
 
 	new_file->size = size;
@@ -62,14 +62,14 @@ helfs_ret create_and_write(char *in, int size, file_id *out_id)
 	return 0;
 }
 
-helfs_ret read_file(file_id id, char *out, int size)
+hel_ret read_file(file_id id, char *out, int size)
 {
 	file *read_file = (file *)(mem_buff + id);
 
 	// TODO need much more checks to ensure we are not out of boundaries
 	if(read_file->size < size)
 	{
-		return helfs_boundaries_err;
+		return hel_boundaries_err;
 	}
 
 	memcpy(out, read_file->data, size);
