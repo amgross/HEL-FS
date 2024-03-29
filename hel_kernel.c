@@ -1,9 +1,10 @@
 
 #include <stdint.h>
 #include <string.h>
-#include "hel_kernel.h"
-
 #include <stdio.h>
+#include <assert.h>
+
+#include "hel_kernel.h"
 
 static uint8_t mem_buff[MEM_SIZE];
 
@@ -40,13 +41,8 @@ static hel_file *hel_iterator(hel_file *curr_file)
 	}
 
 	// TODO assert?
-	if((uint8_t *)next_file > mem_buff + MEM_SIZE)
-	{
-		printf("ERROR pointer out of bounds by %ld", (uint8_t *)next_file - mem_buff + MEM_SIZE);
-
-		return NULL;
-	}
-
+	assert((uint8_t *)next_file == mem_buff + MEM_SIZE);
+	
 	return NULL;
 }
 
