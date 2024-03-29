@@ -1,7 +1,7 @@
 #include "acutest.h"
 
 #include <stdint.h>
-#include "kernel.h"
+#include "hel_kernel.h"
 
 
 #define MY_STR "hello world\n"

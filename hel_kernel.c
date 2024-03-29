@@ -1,7 +1,7 @@
 
 #include <stdint.h>
 #include <string.h>
-#include "kernel.h"
+#include "hel_kernel.h"
 
 #define EMPTY_SIZE 0xffffffff
 
