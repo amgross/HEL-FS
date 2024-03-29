@@ -100,6 +100,11 @@ hel_ret read_file(hel_file_id id, char *out, int size)
 {
 	hel_file *read_file = (hel_file *)(mem_buff + id);
 
+	if(!read_file->is_file_begin)
+	{
+		return hel_not_file_err;
+	}
+
 	// TODO need much more checks to ensure we are not out of boundaries
 	if(read_file->size < size)
 	{
@@ -108,4 +113,18 @@ hel_ret read_file(hel_file_id id, char *out, int size)
 
 	memcpy(out, read_file->data, size);
 	return 0;
+}
+
+hel_ret hel_delete_file(hel_file_id id)
+{
+	hel_file *del_file = (hel_file *)(mem_buff + id);
+
+	if(!del_file->is_file_begin)
+	{
+		return hel_not_file_err;
+	}
+
+	del_file->is_file_begin = 0;
+
+	return hel_success;
 }
