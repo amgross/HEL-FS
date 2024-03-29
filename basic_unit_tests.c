@@ -1,20 +1,17 @@
 #include "acutest.h"
 
 #include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include "kernel.h"
 
 
 #define MY_STR "hello world\n"
 #define MY_STR2 "world hello\n"
 
-#define MIN_FILE_SIZE 4
+#define MIN_FILE_SIZE sizeof(hel_file)
 
 void basic_test()
 {
-	file_id id;
+	hel_file_id id;
 	hel_ret ret;
 	char buff[100];
 	buff[0] = 0;
@@ -33,7 +30,7 @@ void basic_test()
 
 void write_too_big_test()
 {
-	file_id id;
+	hel_file_id id;
 	hel_ret ret;
 	char buff[MEM_SIZE * 2];
 
@@ -55,7 +52,7 @@ void write_too_big_test()
 
 void write_exact_size_test()
 {
-	file_id id;
+	hel_file_id id;
 	hel_ret ret;
 	char buff[MEM_SIZE];
 	char out_buff[sizeof(buff)];
@@ -75,7 +72,7 @@ void write_exact_size_test()
 
 void read_out_of_boundaries_test()
 {
-	file_id id;
+	hel_file_id id;
 	hel_ret ret;
 	char buff[100];
 	buff[0] = 0;
@@ -92,7 +89,7 @@ void read_out_of_boundaries_test()
 
 void read_part_of_file_test()
 {
-	file_id id;
+	hel_file_id id;
 	hel_ret ret;
 	char buff[100];
 	buff[0] = 0;
@@ -112,7 +109,7 @@ void read_part_of_file_test()
 
 void write_read_multiple_files()
 {
-	file_id id1, id2;
+	hel_file_id id1, id2;
 	hel_ret ret;
 	char buff[100];
 	buff[0] = 0;

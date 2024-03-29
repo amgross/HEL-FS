@@ -1,46 +1,39 @@
 
 #include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include "kernel.h"
 
+#define EMPTY_SIZE 0xffffffff
+
 static uint8_t mem_buff[MEM_SIZE];
-
-typedef struct my_code
-{
-	int size;
-	char data[];
-}file;
-
 
 hel_ret init_fs()
 {
-	memset(mem_buff, 0, MEM_SIZE);
+	memset(mem_buff, 0xff, MEM_SIZE);
 	
 	return hel_success;
 }
 
-file *find_empty_place(int size)
+hel_file *find_empty_place(int size)
 {
-	for(file *curr_file = (file *)mem_buff;; curr_file = (file *)((uint8_t *)curr_file + sizeof(file) + curr_file->size))
+	for(hel_file *curr_file = (hel_file *)mem_buff;; curr_file = (hel_file *)((uint8_t *)curr_file + sizeof(hel_file) + curr_file->size))
 	{
 		// TODO, ensure no wrap around
-		if((uint8_t *)curr_file + sizeof(file) + size > mem_buff + MEM_SIZE)
+		if((uint8_t *)curr_file + sizeof(hel_file) + size > mem_buff + MEM_SIZE)
 		{
 			return NULL;
 		}
 
-		if(curr_file->size == 0)
+		if(curr_file->size == EMPTY_SIZE)
 		{
 			return curr_file;
 		}
 	}
 }
 
-hel_ret create_and_write(char *in, int size, file_id *out_id)
+hel_ret create_and_write(char *in, int size, hel_file_id *out_id)
 {
-	file *new_file;
+	hel_file *new_file;
 
 	if(NULL == out_id)
 	{
@@ -62,9 +55,9 @@ hel_ret create_and_write(char *in, int size, file_id *out_id)
 	return 0;
 }
 
-hel_ret read_file(file_id id, char *out, int size)
+hel_ret read_file(hel_file_id id, char *out, int size)
 {
-	file *read_file = (file *)(mem_buff + id);
+	hel_file *read_file = (hel_file *)(mem_buff + id);
 
 	// TODO need much more checks to ensure we are not out of boundaries
 	if(read_file->size < size)
