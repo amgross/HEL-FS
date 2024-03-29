@@ -3,32 +3,66 @@
 #include <string.h>
 #include "hel_kernel.h"
 
-#define EMPTY_SIZE 0xffffffff
+#include <stdio.h>
 
 static uint8_t mem_buff[MEM_SIZE];
 
 hel_ret init_fs()
 {
-	memset(mem_buff, 0xff, MEM_SIZE);
+	hel_file *start_pointer = (hel_file *)mem_buff;
+
+	start_pointer->size = MEM_SIZE - sizeof(hel_file);
+	start_pointer->is_file_begin = 0;
 	
 	return hel_success;
 }
 
-hel_file *find_empty_place(int size)
+void print_file(hel_file *file)
 {
-	for(hel_file *curr_file = (hel_file *)mem_buff;; curr_file = (hel_file *)((uint8_t *)curr_file + sizeof(hel_file) + curr_file->size))
-	{
-		// TODO, ensure no wrap around
-		if((uint8_t *)curr_file + sizeof(hel_file) + size > mem_buff + MEM_SIZE)
-		{
-			return NULL;
-		}
+	printf("size %d, is file begin %d, is file end %d, diff from begin %ld\n", file->size, file->is_file_begin, file->is_file_end, (uint8_t *)file - mem_buff);
+}
 
-		if(curr_file->size == EMPTY_SIZE)
+static hel_file *hel_iterator(hel_file *curr_file)
+{
+	hel_file *next_file;
+
+	if(NULL == curr_file)
+	{
+		next_file = (hel_file *)mem_buff;
+
+		return next_file;
+	}
+
+	next_file = (hel_file *)(curr_file->data + curr_file->size);
+	if((uint8_t *)next_file < mem_buff + MEM_SIZE)
+	{
+		return next_file;
+	}
+
+	// TODO assert?
+	if((uint8_t *)next_file > mem_buff + MEM_SIZE)
+	{
+		printf("ERROR pointer out of bounds by %ld", (uint8_t *)next_file - mem_buff + MEM_SIZE);
+
+		return NULL;
+	}
+
+	return NULL;
+}
+
+static hel_file *hel_find_empty_place(int size)
+{
+	hel_file *curr_file = NULL;
+	while((curr_file = hel_iterator(curr_file)) != NULL)
+	{
+		// TODO add option to concatinate 
+		if((curr_file->is_file_begin == 0) && (curr_file->size >= size))
 		{
 			return curr_file;
 		}
 	}
+
+	return NULL;
 }
 
 hel_ret create_and_write(char *in, int size, hel_file_id *out_id)
@@ -40,13 +74,24 @@ hel_ret create_and_write(char *in, int size, hel_file_id *out_id)
 		return hel_param_err;
 	}
 	
-	new_file = find_empty_place(size);
+	new_file = hel_find_empty_place(size);
 	if(new_file == NULL)
 	{
 		return hel_mem_err;
 	}
 
+	if(new_file->size > size)
+	{
+		hel_file *next_file;
+
+		next_file = (hel_file *)(new_file->data + size);
+		next_file->is_file_begin = 0;
+		next_file->size = new_file->size - sizeof(hel_file);
+	}
+
 	new_file->size = size;
+	new_file->is_file_begin = 1;
+	new_file->is_file_end = 1;
 
 	memcpy(new_file->data, in, size);
 

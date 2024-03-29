@@ -9,11 +9,15 @@ typedef enum
 	hel_param_err, // General parameter error
 }hel_ret;
 
-typedef struct my_code
+// #pragma pack(push, 1)
+typedef struct
 {
 	uint32_t size;
+	int is_file_begin;
+	int is_file_end;
 	char data[];
 }hel_file;
+// #pragma pack(pop)
 
 typedef uint32_t hel_file_id;
 

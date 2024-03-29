@@ -1,11 +1,12 @@
 #include "acutest.h"
 
 #include <stdint.h>
+#include <stdio.h>
 #include "hel_kernel.h"
 
 
-#define MY_STR "hello world\n"
-#define MY_STR2 "world hello\n"
+#define MY_STR  "hello world!!!!!!!!!!!!!!!!\n"
+#define MY_STR2 "world hello!!!!!!!!!!!!!!!!\n"
 
 #define MIN_FILE_SIZE sizeof(hel_file)
 

@@ -12,6 +12,8 @@ OBJS = $(SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 
 all: $(BUILD_DIR) $(TARGET)
 
+full: clean all test
+
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
