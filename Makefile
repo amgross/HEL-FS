@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Werror -g
+CFLAGS = -Wall -Werror -g -O3
 TARGET = test.out
 SRC_DIR = .
 BUILD_DIR = build
