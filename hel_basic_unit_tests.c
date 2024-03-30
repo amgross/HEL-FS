@@ -9,7 +9,7 @@
 #define MY_STR2 "world hello\n"
 #define MY_STR3 "foo bar foo bar\n"
 
-#define MIN_FILE_SIZE sizeof(hel_file)
+#define MIN_FILE_SIZE sizeof(hel_chunk)
 
 void basic_test()
 {
@@ -57,6 +57,23 @@ void write_too_big_test()
 
 	ret = create_and_write(buff, MEM_SIZE - MIN_FILE_SIZE, &id);
 	TEST_ASSERT_(ret == 0, "got error - %d", ret);
+}
+
+void create_too_big_when_file_exist()
+{
+	hel_file_id id;
+	hel_ret ret;
+	char buff[MEM_SIZE * 2];
+	buff[0] = 0;
+
+	ret = init_fs();
+	TEST_ASSERT_(ret == 0, "Got error %d", ret);
+
+	ret = create_and_write(MY_STR1, sizeof(MY_STR1), &id);
+	TEST_ASSERT_(ret == 0, "got error %d", ret);
+
+	ret = create_and_write(buff, MEM_SIZE, &id);
+	TEST_ASSERT_(ret == hel_mem_err, "expected error hel_mem_err-%d but got %d", hel_mem_err, ret);
 }
 
 void write_exact_size_test()
@@ -220,6 +237,7 @@ void delete_in_middle_test()
 TEST_LIST = {
     { "basic-test", basic_test },
 	{ "write_too_big_test", write_too_big_test},
+	{ "create_too_big_when_file_exist", create_too_big_when_file_exist},
 	{ "write_exact_size_test", write_exact_size_test},
 	{ "read_out_of_boundaries_test", read_out_of_boundaries_test},
 	{ "read_part_of_file_test", read_part_of_file_test},

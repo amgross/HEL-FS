@@ -1,5 +1,6 @@
 
-#define MEM_SIZE 0x100
+#define MEM_SIZE 0x400
+#define SECTOR_SIZE 0X20
 
 typedef enum
 {
@@ -13,11 +14,12 @@ typedef enum
 #pragma pack(push, 1)
 typedef struct
 {
-	uint32_t size;
-	int is_file_begin;
-	int is_file_end;
+	uint16_t size : 14; // in case is_file_end - it size in bytes, else it size in sectors
+	uint16_t is_file_begin : 1;
+	uint16_t is_file_end : 1;
+	uint16_t next_file_id;
 	char data[];
-}hel_file;
+}hel_chunk;
 #pragma pack(pop)
 
 typedef uint32_t hel_file_id;
