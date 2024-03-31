@@ -8,14 +8,20 @@
 
 static uint8_t mem_buff[MEM_SIZE];
 
+#define CHUNK_SIZE_IN_SECTORS(chunk) (!chunk->is_file_end ? chunk->size : (chunk->size + sizeof(hel_chunk) + SECTOR_SIZE - 1) / SECTOR_SIZE)
+#define CHUNK_SIZE_IN_BYTES(chunk) ((CHUNK_SIZE_IN_SECTORS(chunk) * SECTOR_SIZE) - sizeof(hel_chunk))
+#define CHUNK_DATA_BYTES(chunk) (chunk->is_file_end ? chunk->size : CHUNK_SIZE_IN_BYTES(chunk))
+
 hel_ret init_fs()
 {
 	hel_chunk *start_pointer = (hel_chunk *)mem_buff;
 
 	assert(SECTOR_SIZE > sizeof(hel_chunk));
+	assert(MEM_SIZE % SECTOR_SIZE == 0);
 
-	start_pointer->size = MEM_SIZE - sizeof(hel_chunk);
+	start_pointer->size = MEM_SIZE / SECTOR_SIZE;
 	start_pointer->is_file_begin = 0;
+	start_pointer->is_file_end = 0;
 	
 	return hel_success;
 }
@@ -36,7 +42,7 @@ static hel_chunk *hel_iterator(hel_chunk *curr_file)
 		return next_chunk;
 	}
 
-	next_chunk = (hel_chunk *)(curr_file->data + curr_file->size);
+	next_chunk = (hel_chunk *)(curr_file->data + CHUNK_SIZE_IN_BYTES(curr_file));
 	if((uint8_t *)next_chunk < mem_buff + MEM_SIZE)
 	{
 		return next_chunk;
@@ -53,7 +59,7 @@ static hel_chunk *hel_find_empty_place(int size)
 	while((curr_file = hel_iterator(curr_file)) != NULL)
 	{
 		// TODO add option to concatinate 
-		if((curr_file->is_file_begin == 0) && (curr_file->size >= size))
+		if((curr_file->is_file_begin == 0) && (CHUNK_SIZE_IN_BYTES(curr_file) >= size))
 		{
 			return curr_file;
 		}
@@ -77,13 +83,15 @@ hel_ret create_and_write(char *in, int size, hel_file_id *out_id)
 		return hel_mem_err;
 	}
 
-	if(new_file->size > size)
-	{
+	if(CHUNK_SIZE_IN_SECTORS(new_file) > (size + sizeof(hel_chunk) + SECTOR_SIZE - 1) / SECTOR_SIZE)
+	{ // Need to split
+		int new_chunk_sector_size = (size + sizeof(hel_chunk) + SECTOR_SIZE - 1) / SECTOR_SIZE;
 		hel_chunk *next_chunk;
 
-		next_chunk = (hel_chunk *)(new_file->data + size);
+		next_chunk = (hel_chunk *)(new_file->data + ((new_chunk_sector_size * SECTOR_SIZE) - sizeof(hel_chunk)));
 		next_chunk->is_file_begin = 0;
-		next_chunk->size = new_file->size - sizeof(hel_chunk) - size;
+		next_chunk->is_file_end = 0;
+		next_chunk->size = CHUNK_SIZE_IN_SECTORS(new_file) - new_chunk_sector_size;
 	}
 
 	new_file->size = size;
@@ -107,7 +115,7 @@ hel_ret read_file(hel_file_id id, char *out, int size)
 	}
 
 	// TODO need much more checks to ensure we are not out of boundaries
-	if(read_file->size < size)
+	if(CHUNK_DATA_BYTES(read_file) < size)
 	{
 		return hel_boundaries_err;
 	}
@@ -125,7 +133,9 @@ hel_ret hel_delete_file(hel_file_id id)
 		return hel_not_file_err;
 	}
 
+	del_file->size = CHUNK_SIZE_IN_SECTORS(del_file);
 	del_file->is_file_begin = 0;
+	del_file->is_file_end = 0;
 
 	return hel_success;
 }

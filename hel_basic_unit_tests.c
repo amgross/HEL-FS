@@ -8,6 +8,7 @@
 #define MY_STR1 "hello world!\n"
 #define MY_STR2 "world hello\n"
 #define MY_STR3 "foo bar foo bar\n"
+#define BIG_STR1 "LSKDMFOIWE43 43 434 3 RE WRF34563453!@#$&^&**&&^DSFKGMSOFDKMGSLKDFMERREWKRkmokmokKNOMOK$#$#@@@@!##$#DSFGDF"
 
 #define MIN_FILE_SIZE sizeof(hel_chunk)
 
@@ -234,6 +235,65 @@ void delete_in_middle_test()
 
 }
 
+void write_big_when_there_hole_test()
+{
+	hel_file_id id1, id2, id3;
+	hel_ret ret;
+	char buff[1000];
+	buff[0] = 0;
+
+	ret = init_fs();
+	TEST_ASSERT_(ret == 0, "Got error %d", ret);
+
+	ret = create_and_write(MY_STR1, sizeof(MY_STR1), &id1);
+	TEST_ASSERT_(ret == 0, "got error %d", ret);
+
+	ret = create_and_write(MY_STR2, sizeof(MY_STR2), &id2);
+	TEST_ASSERT_(ret == 0, "got error %d", ret);
+
+	ret = create_and_write(MY_STR3, sizeof(MY_STR3), &id3);
+	TEST_ASSERT_(ret == 0, "got error %d", ret);
+
+	ret = read_file(id1, buff, sizeof(MY_STR1));
+	TEST_ASSERT_(ret == 0, "got error %d", ret);
+
+	TEST_ASSERT(memcmp(buff, MY_STR1, sizeof(MY_STR1)) == 0);
+
+	ret = read_file(id2, buff, sizeof(MY_STR2));
+	TEST_ASSERT_(ret == 0, "got error %d", ret);
+
+	TEST_ASSERT(memcmp(buff, MY_STR2, sizeof(MY_STR2)) == 0);
+
+	ret = read_file(id3, buff, sizeof(MY_STR3));
+	TEST_ASSERT_(ret == 0, "got error %d", ret);
+
+	TEST_ASSERT(memcmp(buff, MY_STR3, sizeof(MY_STR3)) == 0);
+
+	ret = hel_delete_file(id2);
+	TEST_ASSERT_(ret == 0, "got error %d", ret);
+
+	ret = read_file(id2, buff, sizeof(MY_STR2));
+	TEST_ASSERT_(ret == hel_not_file_err, "expected error hel_not_file_err-%d but got %d", hel_not_file_err, ret);
+
+	ret = create_and_write(BIG_STR1, sizeof(BIG_STR1), &id2);
+	TEST_ASSERT_(ret == 0, "got error %d", ret);
+
+	ret = read_file(id1, buff, sizeof(MY_STR1));
+	TEST_ASSERT_(ret == 0, "got error %d", ret);
+
+	TEST_ASSERT(memcmp(buff, MY_STR1, sizeof(MY_STR1)) == 0);
+
+	ret = read_file(id2, buff, sizeof(BIG_STR1));
+	TEST_ASSERT_(ret == 0, "got error %d", ret);
+
+	TEST_ASSERT(memcmp(buff, BIG_STR1, sizeof(BIG_STR1)) == 0);
+
+	ret = read_file(id3, buff, sizeof(MY_STR3));
+	TEST_ASSERT_(ret == 0, "got error %d", ret);
+
+	TEST_ASSERT(memcmp(buff, MY_STR3, sizeof(MY_STR3)) == 0);
+}
+
 TEST_LIST = {
     { "basic-test", basic_test },
 	{ "write_too_big_test", write_too_big_test},
@@ -244,5 +304,7 @@ TEST_LIST = {
 	{ "write_read_multiple_files", write_read_multiple_files},
 	{ "null_params_test", null_params_test},
 	{ "delete_in_middle_test", delete_in_middle_test},
+	{ "write_big_when_there_hole_test", write_big_when_there_hole_test},
+
     { NULL, NULL }
 };
