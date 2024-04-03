@@ -8,7 +8,10 @@
 
 static uint8_t mem_buff[MEM_SIZE];
 
-#define CHUNK_SIZE_IN_SECTORS(chunk) (!chunk->is_file_end ? chunk->size : (chunk->size + sizeof(hel_chunk) + SECTOR_SIZE - 1) / SECTOR_SIZE)
+// TODO This not protecting against wrapparounds
+#define ROUND_UP_DEV(x, y) (((x) + (y) - 1) / y)
+
+#define CHUNK_SIZE_IN_SECTORS(chunk) (!chunk->is_file_end ? chunk->size : ROUND_UP_DEV(chunk->size + sizeof(hel_chunk), SECTOR_SIZE))
 #define CHUNK_SIZE_IN_BYTES(chunk) ((CHUNK_SIZE_IN_SECTORS(chunk) * SECTOR_SIZE) - sizeof(hel_chunk))
 #define CHUNK_DATA_BYTES(chunk) (chunk->is_file_end ? chunk->size : CHUNK_SIZE_IN_BYTES(chunk))
 
@@ -83,9 +86,9 @@ hel_ret create_and_write(char *in, int size, hel_file_id *out_id)
 		return hel_mem_err;
 	}
 
-	if(CHUNK_SIZE_IN_SECTORS(new_file) > (size + sizeof(hel_chunk) + SECTOR_SIZE - 1) / SECTOR_SIZE)
+	if(CHUNK_SIZE_IN_SECTORS(new_file) > ROUND_UP_DEV(size + sizeof(hel_chunk), SECTOR_SIZE))
 	{ // Need to split
-		int new_chunk_sector_size = (size + sizeof(hel_chunk) + SECTOR_SIZE - 1) / SECTOR_SIZE;
+		int new_chunk_sector_size = ROUND_UP_DEV(size + sizeof(hel_chunk), SECTOR_SIZE);
 		hel_chunk *next_chunk;
 
 		next_chunk = (hel_chunk *)(new_file->data + ((new_chunk_sector_size * SECTOR_SIZE) - sizeof(hel_chunk)));
