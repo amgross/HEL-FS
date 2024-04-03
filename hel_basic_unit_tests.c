@@ -13,18 +13,19 @@
 #define MIN_FILE_SIZE sizeof(hel_chunk)
 
 void basic_test()
-{
+{	
+
 	hel_file_id id;
 	hel_ret ret;
 	char buff[100];
 	buff[0] = 0;
-
+	
 	ret = hel_format();
 	TEST_ASSERT_(ret == 0, "Got error %d", ret);
-
+	
 	ret = hel_create_and_write(MY_STR1, sizeof(MY_STR1), &id);
 	TEST_ASSERT_(ret == 0, "got error %d", ret);
-
+	
 	ret = hel_read(id, buff, sizeof(MY_STR1));
 	TEST_ASSERT_(ret == 0, "got error %d", ret);
 
@@ -294,6 +295,32 @@ void write_big_when_there_hole_test()
 	TEST_ASSERT(memcmp(buff, MY_STR3, sizeof(MY_STR3)) == 0);
 }
 
+void basic_mem_leak_test()
+{
+	hel_file_id id;
+	hel_ret ret;
+	char buff[100];
+	buff[0] = 0;
+	
+	ret = hel_format();
+	TEST_ASSERT_(ret == 0, "Got error %d", ret);
+	
+	for(int i = 0; i < MEM_SIZE; i++)
+	{
+		ret = hel_create_and_write(MY_STR1, sizeof(MY_STR1), &id);
+		TEST_ASSERT_(ret == 0, "got error %d, cycle %d", ret, i);
+		
+		ret = hel_read(id, buff, sizeof(MY_STR1));
+		TEST_ASSERT_(ret == 0, "got error %d, cycle %d", ret, i);
+
+		TEST_ASSERT(memcmp(buff, MY_STR1, sizeof(MY_STR1)) == 0);
+
+		ret = hel_delete(id);
+		TEST_ASSERT_(ret == 0, "Got error %d, cycle %d", ret, i);
+	}
+}
+
+
 TEST_LIST = {
     { "basic-test", basic_test },
 	{ "write_too_big_test", write_too_big_test},
@@ -305,6 +332,7 @@ TEST_LIST = {
 	{ "null_params_test", null_params_test},
 	{ "delete_in_middle_test", delete_in_middle_test},
 	{ "write_big_when_there_hole_test", write_big_when_there_hole_test},
+	{ "basic_mem_leak_test", basic_mem_leak_test},
 
     { NULL, NULL }
 };
