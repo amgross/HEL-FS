@@ -24,10 +24,12 @@ typedef struct
 
 typedef uint32_t hel_file_id;
 
-hel_ret init_fs();
+hel_ret hel_format();
 
-hel_ret create_and_write(char *in, int size, hel_file_id *out_id);
+hel_ret hel_init();
 
-hel_ret read_file(hel_file_id id, char *out, int size);
+hel_ret hel_create_and_write(char *in, int size, hel_file_id *out_id);
 
-hel_ret hel_delete_file(hel_file_id id);
+hel_ret hel_read(hel_file_id id, char *out, int size);
+
+hel_ret hel_delete(hel_file_id id);

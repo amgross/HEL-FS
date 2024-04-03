@@ -15,7 +15,12 @@ static uint8_t mem_buff[MEM_SIZE];
 #define CHUNK_SIZE_IN_BYTES(chunk) ((CHUNK_SIZE_IN_SECTORS(chunk) * SECTOR_SIZE) - sizeof(hel_chunk))
 #define CHUNK_DATA_BYTES(chunk) (chunk->is_file_end ? chunk->size : CHUNK_SIZE_IN_BYTES(chunk))
 
-hel_ret init_fs()
+hel_ret hel_init()
+{
+	return hel_success;
+}
+
+hel_ret hel_format()
 {
 	hel_chunk *start_pointer = (hel_chunk *)mem_buff;
 
@@ -26,7 +31,7 @@ hel_ret init_fs()
 	start_pointer->is_file_begin = 0;
 	start_pointer->is_file_end = 0;
 	
-	return hel_success;
+	return hel_init();
 }
 
 void print_file(hel_chunk *file)
@@ -71,7 +76,7 @@ static hel_chunk *hel_find_empty_place(int size)
 	return NULL;
 }
 
-hel_ret create_and_write(char *in, int size, hel_file_id *out_id)
+hel_ret hel_create_and_write(char *in, int size, hel_file_id *out_id)
 {
 	hel_chunk *new_file;
 
@@ -108,7 +113,7 @@ hel_ret create_and_write(char *in, int size, hel_file_id *out_id)
 	return 0;
 }
 
-hel_ret read_file(hel_file_id id, char *out, int size)
+hel_ret hel_read(hel_file_id id, char *out, int size)
 {
 	hel_chunk *read_file = (hel_chunk *)(mem_buff + id);
 
@@ -127,7 +132,7 @@ hel_ret read_file(hel_file_id id, char *out, int size)
 	return 0;
 }
 
-hel_ret hel_delete_file(hel_file_id id)
+hel_ret hel_delete(hel_file_id id)
 {
 	hel_chunk *del_file = (hel_chunk *)(mem_buff + id);
 
