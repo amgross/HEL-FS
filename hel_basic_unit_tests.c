@@ -14,7 +14,6 @@
 
 void basic_test()
 {	
-
 	hel_file_id id;
 	hel_ret ret;
 	char buff[100];
@@ -33,7 +32,6 @@ void basic_test()
 
 	ret = hel_delete(id);
 	TEST_ASSERT_(ret == 0, "Got error %d", ret);
-
 
 	ret = hel_read(id, buff, sizeof(MY_STR2));
 	TEST_ASSERT_(ret == hel_not_file_err, "expected error hel_not_file_err-%d but got %d", hel_not_file_err, ret);
@@ -318,6 +316,9 @@ void basic_mem_leak_test()
 		ret = hel_delete(id);
 		TEST_ASSERT_(ret == 0, "Got error %d, cycle %d", ret, i);
 	}
+
+	ret = hel_read(id, buff, sizeof(MY_STR2));
+	TEST_ASSERT_(ret == hel_not_file_err, "expected error hel_not_file_err-%d but got %d", hel_not_file_err, ret);
 }
 
 
