@@ -2,12 +2,16 @@
 name: Build and Test C Code
 
 on:
+  schedule:
+    - cron: '0 0 * * 0' # Runs every day at midnight UTC
+
   pull_request:
     branches: [main]
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 2 # Timeout if the job takes more than 2 minutes
 
     steps:
     - name: Checkout code
