@@ -9,6 +9,7 @@ typedef enum
 	hel_boundaries_err, // Out of boundaries
 	hel_param_err, // General parameter error
 	hel_not_file_err,
+	hel_out_of_heap,
 }hel_ret;
 
 #pragma pack(push, 1)

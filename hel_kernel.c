@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 #include "hel_kernel.h"
 
@@ -96,11 +97,16 @@ static int hel_count_empty_sectors(hel_file_id id)
 	return ret;
 }
 
-static hel_ret hel_get_chunks_for_file(int size, hel_file_id *chunks_arr, int *chunks_num)
+static hel_ret hel_get_chunks_for_file(int size, hel_file_id **chunks_arr, int *chunks_num)
 {
 	hel_chunk *new_file;
 	hel_file_id new_file_id = 0;
 	int empty_sectors;
+	hel_file_id *chunks_arr_tmp;
+
+	*chunks_arr = NULL;
+	*chunks_num = 0;
+
 
 	while((new_file = hel_find_empty_place(new_file_id)) != NULL)
 	{	
@@ -109,6 +115,16 @@ static hel_ret hel_get_chunks_for_file(int size, hel_file_id *chunks_arr, int *c
 		empty_sectors = hel_count_empty_sectors(new_file_id);
 		if((empty_sectors * SECTOR_SIZE) - sizeof(hel_chunk) >= size)
 		{
+			chunks_arr_tmp = (hel_file_id *)realloc(*chunks_arr, (*chunks_num + 1) * sizeof(hel_file_id));
+			if(chunks_arr_tmp == NULL)
+			{
+				free(*chunks_arr);
+				return hel_out_of_heap;
+			}
+
+			*chunks_arr = chunks_arr_tmp;
+			(*chunks_arr)[*chunks_num] = new_file_id;
+			(*chunks_num)++;
 			break;
 		}
 		else
@@ -117,13 +133,10 @@ static hel_ret hel_get_chunks_for_file(int size, hel_file_id *chunks_arr, int *c
 		}
 	}
 
-		if(new_file == NULL)
+	if(new_file == NULL)
 	{
 		return hel_mem_err;
 	}
-
-	*chunks_arr = new_file_id;
-	*chunks_num = 1;
 
 	return hel_success;
 }
@@ -180,7 +193,7 @@ void print_file(hel_chunk *file)
 hel_ret hel_create_and_write(char *in, int size, hel_file_id *out_id)
 {
 	hel_chunk *new_file;
-	hel_file_id new_file_id = 0;
+	hel_file_id *new_file_id_arr;
 	int chunks_num;
 	int empty_sectors;
 	hel_ret ret;
@@ -190,7 +203,7 @@ hel_ret hel_create_and_write(char *in, int size, hel_file_id *out_id)
 		return hel_param_err;
 	}
 	
-	ret = hel_get_chunks_for_file(size, &new_file_id, &chunks_num);
+	ret = hel_get_chunks_for_file(size, &new_file_id_arr, &chunks_num);
 	if(ret != hel_success)
 	{
 		return ret;
@@ -198,9 +211,9 @@ hel_ret hel_create_and_write(char *in, int size, hel_file_id *out_id)
 
 	assert(chunks_num == 1);
 
-	new_file = ID_TO_CHUNK(new_file_id);
+	new_file = ID_TO_CHUNK(new_file_id_arr[0]);
 
-	empty_sectors = hel_count_empty_sectors(new_file_id);
+	empty_sectors = hel_count_empty_sectors(new_file_id_arr[0]);
 
 	// TODO, lots of corner cases here to optimize and for power failure protection
 	if(empty_sectors > ROUND_UP_DEV(size + sizeof(hel_chunk), SECTOR_SIZE))
@@ -208,7 +221,7 @@ hel_ret hel_create_and_write(char *in, int size, hel_file_id *out_id)
 		int new_chunk_sector_size = ROUND_UP_DEV(size + sizeof(hel_chunk), SECTOR_SIZE);
 		hel_chunk *next_chunk;
 
-		next_chunk = ID_TO_CHUNK(new_file_id + new_chunk_sector_size);
+		next_chunk = ID_TO_CHUNK(new_file_id_arr[0] + new_chunk_sector_size);
 		next_chunk->is_file_begin = 0;
 		next_chunk->is_file_end = 0;
 		next_chunk->size = empty_sectors - new_chunk_sector_size;
