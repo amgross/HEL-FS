@@ -236,6 +236,8 @@ hel_ret hel_create_and_write(char *in, int size, hel_file_id *out_id)
 	memcpy(new_file->data, in, size);
 	
 	*out_id = CHUNK_TO_ID(new_file);
+
+	free(new_file_id_arr);
 	
 	return 0;
 }

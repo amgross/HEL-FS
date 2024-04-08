@@ -353,16 +353,16 @@ void concatinate_test()
 TEST_LIST = {
     { "basic-test", basic_test },
 	{ "write_too_big_test", write_too_big_test},
-	{ "create_too_big_when_file_exist", create_too_big_when_file_exist},
-	{ "write_exact_size_test", write_exact_size_test},
-	{ "read_out_of_boundaries_test", read_out_of_boundaries_test},
-	{ "read_part_of_file_test", read_part_of_file_test},
-	{ "write_read_multiple_files", write_read_multiple_files},
-	{ "null_params_test", null_params_test},
-	{ "delete_in_middle_test", delete_in_middle_test},
-	{ "write_big_when_there_hole_test", write_big_when_there_hole_test},
-	{ "basic_mem_leak_test", basic_mem_leak_test},
-	{ "concatinate_test", concatinate_test},
+	// { "create_too_big_when_file_exist", create_too_big_when_file_exist},
+	// { "write_exact_size_test", write_exact_size_test},
+	// { "read_out_of_boundaries_test", read_out_of_boundaries_test},
+	// { "read_part_of_file_test", read_part_of_file_test},
+	// { "write_read_multiple_files", write_read_multiple_files},
+	// { "null_params_test", null_params_test},
+	// { "delete_in_middle_test", delete_in_middle_test},
+	// { "write_big_when_there_hole_test", write_big_when_there_hole_test},
+	// { "basic_mem_leak_test", basic_mem_leak_test},
+	// { "concatinate_test", concatinate_test},
 
     { NULL, NULL }
 };

@@ -14,6 +14,8 @@ all: $(BUILD_DIR) $(TARGET)
 
 full: clean all test
 
+full_mem: clean all mem_check_test
+
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
@@ -25,6 +27,9 @@ $(TARGET): $(OBJS)
 
 test:
 	./$(TARGET)
+
+mem_check_test:
+	valgrind --leak-check=yes --error-exitcode=1 --quiet ./$(TARGET)
 
 clean:
 	rm -rf $(BUILD_DIR) $(TARGET)
