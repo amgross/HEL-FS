@@ -79,6 +79,23 @@ static void hel_sign_area(hel_chunk *chunk, bool fill)
 	}
 }
 
+static int hel_count_empty_sectors(hel_file_id id)
+{
+	int ret = 0;
+	for(; id < MEM_SIZE / SECTOR_SIZE; id++)
+	{
+		if(GET_FREE_BIT(id))
+		{
+			return ret;
+		}
+		else{
+			ret++;
+		}
+	}
+
+	return ret;
+}
+
 hel_ret hel_init()
 {
 	hel_chunk *check_chunk;
@@ -131,32 +148,26 @@ void print_file(hel_chunk *file)
 hel_ret hel_create_and_write(char *in, int size, hel_file_id *out_id)
 {
 	hel_chunk *new_file;
-	hel_file_id curr_id = 0;
+	hel_file_id new_file_id = 0;
+	int empty_sectors;
 
 	if(NULL == out_id)
 	{
 		return hel_param_err;
 	}
 	
-	while((new_file = hel_find_empty_place(curr_id)) != NULL)
+	while((new_file = hel_find_empty_place(new_file_id)) != NULL)
 	{	
-		// TODO concatinate chunks if it helpful
-		if(CHUNK_SIZE_IN_BYTES(new_file) >= size)
+		new_file_id =CHUNK_TO_ID(new_file);
+		
+		empty_sectors = hel_count_empty_sectors(new_file_id);
+		if((empty_sectors * SECTOR_SIZE) - sizeof(hel_chunk) >= size)
 		{
 			break;
 		}
 		else
-		{	
-
-			new_file = hel_iterator(new_file);	
-
-			if(new_file == NULL)
-			{	
-
-				break;
-			}	
-
-			curr_id = CHUNK_TO_ID(new_file);
+		{
+			new_file_id += empty_sectors;
 		}
 	}
 	
@@ -165,15 +176,16 @@ hel_ret hel_create_and_write(char *in, int size, hel_file_id *out_id)
 		return hel_mem_err;
 	}
 
-	if(CHUNK_SIZE_IN_SECTORS(new_file) > ROUND_UP_DEV(size + sizeof(hel_chunk), SECTOR_SIZE))
+	// TODO, lots of corner cases here to optimize and for power failure protection
+	if(empty_sectors > ROUND_UP_DEV(size + sizeof(hel_chunk), SECTOR_SIZE))
 	{ // Need to split
 		int new_chunk_sector_size = ROUND_UP_DEV(size + sizeof(hel_chunk), SECTOR_SIZE);
 		hel_chunk *next_chunk;
 
-		next_chunk = (hel_chunk *)(new_file->data + ((new_chunk_sector_size * SECTOR_SIZE) - sizeof(hel_chunk)));
+		next_chunk = ID_TO_CHUNK(new_file_id + new_chunk_sector_size);
 		next_chunk->is_file_begin = 0;
 		next_chunk->is_file_end = 0;
-		next_chunk->size = CHUNK_SIZE_IN_SECTORS(new_file) - new_chunk_sector_size;
+		next_chunk->size = empty_sectors - new_chunk_sector_size;
 	}
 	
 	new_file->size = size;
