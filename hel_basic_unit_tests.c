@@ -364,6 +364,7 @@ void fragmented_test()
 	hel_ret ret;
 	char buff[(MEM_SIZE / 3) * 2];
 	char buff_2[sizeof(buff)];
+	fill_rand_buff((uint8_t *)buff, sizeof(buff));
 
 	ret = hel_format();
 	TEST_ASSERT_(ret == 0, "Got error %d", ret);
