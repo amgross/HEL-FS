@@ -12,6 +12,14 @@
 
 #define MIN_FILE_SIZE sizeof(hel_chunk)
 
+static void fill_rand_buff(uint8_t *buff, size_t len)
+{
+	for(size_t i = 0;i < len; i++)
+	{
+		buff[i] = (uint8_t)(rand() % 0xff);
+	}
+}
+
 void basic_test()
 {	
 	hel_file_id id;
@@ -81,6 +89,7 @@ void write_exact_size_test()
 	hel_file_id id;
 	hel_ret ret;
 	char buff[MEM_SIZE];
+	fill_rand_buff((uint8_t *)buff, sizeof(buff));
 	char out_buff[sizeof(buff)];
 	int size_to_write = MEM_SIZE - MIN_FILE_SIZE;
 
@@ -349,20 +358,53 @@ void concatinate_test()
 	TEST_ASSERT_(ret == 0, "got error %d", ret);
 }
 
+void fragmented_test()
+{
+	hel_file_id id1, id2, id3;
+	hel_ret ret;
+	char buff[(MEM_SIZE / 3) * 2];
+	char buff_2[sizeof(buff)];
+
+	ret = hel_format();
+	TEST_ASSERT_(ret == 0, "Got error %d", ret);
+
+	ret = hel_create_and_write(buff, sizeof(buff) / 2, &id1);
+	TEST_ASSERT_(ret == 0, "got error %d", ret);
+
+	ret = hel_create_and_write(buff, sizeof(buff) / 4, &id2);
+	TEST_ASSERT_(ret == 0, "got error %d", ret);
+
+	ret = hel_create_and_write(buff, sizeof(buff), &id3);
+	TEST_ASSERT_(ret == hel_mem_err, "expected error hel_mem_err-%d but got %d", hel_mem_err, ret);
+
+	ret = hel_delete(id1);
+	TEST_ASSERT_(ret == 0, "got error %d", ret);
+
+	ret = hel_create_and_write(buff, sizeof(buff), &id3);
+	TEST_ASSERT_(ret == 0, "got error %d", ret);
+
+	ret = hel_read(id3, buff_2, sizeof(buff_2));
+	TEST_ASSERT_(ret == 0, "got error %d", ret);
+
+	TEST_ASSERT(memcmp(buff_2, buff, sizeof(buff_2)) == 0);
+
+}
+
 
 TEST_LIST = {
     { "basic-test", basic_test },
 	{ "write_too_big_test", write_too_big_test},
-	// { "create_too_big_when_file_exist", create_too_big_when_file_exist},
-	// { "write_exact_size_test", write_exact_size_test},
-	// { "read_out_of_boundaries_test", read_out_of_boundaries_test},
-	// { "read_part_of_file_test", read_part_of_file_test},
-	// { "write_read_multiple_files", write_read_multiple_files},
-	// { "null_params_test", null_params_test},
-	// { "delete_in_middle_test", delete_in_middle_test},
-	// { "write_big_when_there_hole_test", write_big_when_there_hole_test},
-	// { "basic_mem_leak_test", basic_mem_leak_test},
-	// { "concatinate_test", concatinate_test},
+	{ "create_too_big_when_file_exist", create_too_big_when_file_exist},
+	{ "write_exact_size_test", write_exact_size_test},
+	{ "read_out_of_boundaries_test", read_out_of_boundaries_test},
+	{ "read_part_of_file_test", read_part_of_file_test},
+	{ "write_read_multiple_files", write_read_multiple_files},
+	{ "null_params_test", null_params_test},
+	{ "delete_in_middle_test", delete_in_middle_test},
+	{ "write_big_when_there_hole_test", write_big_when_there_hole_test},
+	{ "basic_mem_leak_test", basic_mem_leak_test},
+	{ "concatinate_test", concatinate_test},
+	{ "fragmented_test", fragmented_test},
 
     { NULL, NULL }
 };
