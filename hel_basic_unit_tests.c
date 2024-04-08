@@ -321,6 +321,34 @@ void basic_mem_leak_test()
 	TEST_ASSERT_(ret == hel_not_file_err, "expected error hel_not_file_err-%d but got %d", hel_not_file_err, ret);
 }
 
+void concatinate_test()
+{
+	hel_file_id id1, id2, id3;
+	hel_ret ret;
+	char buff[(MEM_SIZE / 3) * 2];
+
+	ret = hel_format();
+	TEST_ASSERT_(ret == 0, "Got error %d", ret);
+
+	ret = hel_create_and_write(buff, sizeof(buff) / 2, &id1);
+	TEST_ASSERT_(ret == 0, "got error %d", ret);
+
+	ret = hel_create_and_write(buff, sizeof(buff) / 2, &id2);
+	TEST_ASSERT_(ret == 0, "got error %d", ret);
+
+	ret = hel_create_and_write(buff, sizeof(buff), &id3);
+	TEST_ASSERT_(ret == hel_mem_err, "expected error hel_mem_err-%d but got %d", hel_mem_err, ret);
+
+	ret = hel_delete(id2);
+	TEST_ASSERT_(ret == 0, "got error %d", ret);
+
+	ret = hel_delete(id1);
+	TEST_ASSERT_(ret == 0, "got error %d", ret);
+
+	ret = hel_create_and_write(buff, sizeof(buff), &id3);
+	TEST_ASSERT_(ret == 0, "got error %d", ret);
+}
+
 
 TEST_LIST = {
     { "basic-test", basic_test },
@@ -334,6 +362,7 @@ TEST_LIST = {
 	{ "delete_in_middle_test", delete_in_middle_test},
 	{ "write_big_when_there_hole_test", write_big_when_there_hole_test},
 	{ "basic_mem_leak_test", basic_mem_leak_test},
+	{ "concatinate_test", concatinate_test},
 
     { NULL, NULL }
 };
