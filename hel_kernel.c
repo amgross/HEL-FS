@@ -96,6 +96,38 @@ static int hel_count_empty_sectors(hel_file_id id)
 	return ret;
 }
 
+static hel_ret hel_get_chunks_for_file(int size, hel_file_id *chunks_arr, int *chunks_num)
+{
+	hel_chunk *new_file;
+	hel_file_id new_file_id = 0;
+	int empty_sectors;
+
+	while((new_file = hel_find_empty_place(new_file_id)) != NULL)
+	{	
+		new_file_id =CHUNK_TO_ID(new_file);
+		
+		empty_sectors = hel_count_empty_sectors(new_file_id);
+		if((empty_sectors * SECTOR_SIZE) - sizeof(hel_chunk) >= size)
+		{
+			break;
+		}
+		else
+		{
+			new_file_id += empty_sectors;
+		}
+	}
+
+		if(new_file == NULL)
+	{
+		return hel_mem_err;
+	}
+
+	*chunks_arr = new_file_id;
+	*chunks_num = 1;
+
+	return hel_success;
+}
+
 hel_ret hel_init()
 {
 	hel_chunk *check_chunk;
@@ -149,32 +181,26 @@ hel_ret hel_create_and_write(char *in, int size, hel_file_id *out_id)
 {
 	hel_chunk *new_file;
 	hel_file_id new_file_id = 0;
+	int chunks_num;
 	int empty_sectors;
+	hel_ret ret;
 
 	if(NULL == out_id)
 	{
 		return hel_param_err;
 	}
 	
-	while((new_file = hel_find_empty_place(new_file_id)) != NULL)
-	{	
-		new_file_id =CHUNK_TO_ID(new_file);
-		
-		empty_sectors = hel_count_empty_sectors(new_file_id);
-		if((empty_sectors * SECTOR_SIZE) - sizeof(hel_chunk) >= size)
-		{
-			break;
-		}
-		else
-		{
-			new_file_id += empty_sectors;
-		}
-	}
-	
-	if(new_file == NULL)
+	ret = hel_get_chunks_for_file(size, &new_file_id, &chunks_num);
+	if(ret != hel_success)
 	{
-		return hel_mem_err;
+		return ret;
 	}
+
+	assert(chunks_num == 1);
+
+	new_file = ID_TO_CHUNK(new_file_id);
+
+	empty_sectors = hel_count_empty_sectors(new_file_id);
 
 	// TODO, lots of corner cases here to optimize and for power failure protection
 	if(empty_sectors > ROUND_UP_DEV(size + sizeof(hel_chunk), SECTOR_SIZE))
