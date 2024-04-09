@@ -117,7 +117,7 @@ static hel_ret hel_get_chunks_for_file(int size, hel_file_id **chunks_arr, int *
 		if(chunks_arr_tmp == NULL)
 		{
 			free(*chunks_arr);
-			return hel_out_of_heap;
+			return hel_out_of_heap_err;
 		}
 
 		*chunks_arr = chunks_arr_tmp;
