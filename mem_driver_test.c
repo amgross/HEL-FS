@@ -17,7 +17,7 @@ void mem_driver_init_test(uint32_t size, uint32_t _sector_size)
 	mem_size = size;
 	sector_size = _sector_size;
 	mem_buff = (uint8_t *)malloc(size);
-	assert(size > sector_size);
+	assert(size >= sector_size);
 	assert(size % sector_size == 0);
 	assert(mem_buff != NULL);
 

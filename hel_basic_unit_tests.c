@@ -552,6 +552,48 @@ void basic_close_hel_test()
 	TEST_ASSERT(memcmp(buff, MY_STR1, sizeof(MY_STR1)) == 0);
 }
 
+void basic_init_sign_full_chunks_test()
+{
+	hel_file_id id1, id2;
+	hel_ret ret;
+	char buff[100];
+	buff[0] = 0;
+
+	// Create system with just single sector
+	mem_driver_init_test(DEFAULT_SECTOR_SIZE, DEFAULT_SECTOR_SIZE);
+	
+	ret = hel_format();
+	TEST_ASSERT_(ret == hel_success, "Got error %d", ret);
+	
+	// Fill the only sector
+	ret = hel_create_and_write(MY_STR1, sizeof(MY_STR1), &id1);
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+	
+	ret = hel_read(id1, buff, sizeof(MY_STR1));
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	TEST_ASSERT(memcmp(buff, MY_STR1, sizeof(MY_STR1)) == 0);
+
+	// Ensure there is really no place now
+	ret = hel_create_and_write(MY_STR1, sizeof(MY_STR1), &id2);
+	TEST_ASSERT_(ret == hel_mem_err, "expected error hel_mem_err-%d but got %d", hel_mem_err, ret);
+
+	ret = hel_close();
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	ret = hel_init();
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	// Ensure still there is really no place now
+	ret = hel_create_and_write(MY_STR1, sizeof(MY_STR1), &id2);
+	TEST_ASSERT_(ret == hel_mem_err, "expected error hel_mem_err-%d but got %d", hel_mem_err, ret);
+
+
+	ret = hel_read(id1, buff, sizeof(MY_STR1));
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	TEST_ASSERT(memcmp(buff, MY_STR1, sizeof(MY_STR1)) == 0);
+}
 void init_with_fragmented_file()
 {
 	hel_ret ret;
@@ -647,6 +689,7 @@ TEST_LIST = {
 	{"big_id_delete_test", big_id_delete_test},
 	{"ensure_fragmented_file_fully_deleted", ensure_fragmented_file_fully_deleted},
 	{"basic_close_hel_test", ensure_fragmented_file_fully_deleted},
+	{"basic_init_sign_full_chunks_test", basic_init_sign_full_chunks_test},
 	{"init_with_fragmented_file", init_with_fragmented_file},
 
     { NULL, NULL }
