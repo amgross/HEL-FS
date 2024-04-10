@@ -671,6 +671,31 @@ void init_with_fragmented_file()
 	TEST_ASSERT_(ret == hel_mem_err, "expected error hel_mem_err-%d but got %d", hel_mem_err, ret);
 }
 
+void init_with_multiple_free_chunks_test()
+{
+	hel_file_id id;
+	hel_ret ret;
+
+	mem_driver_init_test(DEFAULT_MEM_SIZE, DEFAULT_SECTOR_SIZE);
+	
+	ret = hel_format();
+	TEST_ASSERT_(ret == hel_success, "Got error %d", ret);
+	
+	ret = hel_create_and_write(MY_STR1, sizeof(MY_STR1), &id);
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	ret = hel_delete(id);
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	// re-open file system
+	ret = hel_close();
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	ret = hel_init();
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+}
+
 TEST_LIST = {
     {"basic-test", basic_test },
 	{"write_too_big_test", write_too_big_test},
@@ -691,6 +716,7 @@ TEST_LIST = {
 	{"basic_close_hel_test", ensure_fragmented_file_fully_deleted},
 	{"basic_init_sign_full_chunks_test", basic_init_sign_full_chunks_test},
 	{"init_with_fragmented_file", init_with_fragmented_file},
+	{"init_with_multiple_free_chunks_test", init_with_multiple_free_chunks_test},
 
     { NULL, NULL }
 };
