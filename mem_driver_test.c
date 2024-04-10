@@ -41,12 +41,21 @@ hel_ret mem_driver_close()
 	return hel_success;
 }
 
-hel_ret mem_driver_write(uint32_t v_addr, int size, char *in)
+hel_ret mem_driver_write(uint32_t v_addr, int* size, char **in, int buffs_num)
 {
 	assert(mem_buff != NULL);
-	assert((v_addr < mem_size) && (mem_size - v_addr >= size));
+	for(int i = 0; i < buffs_num; i++)
+	{
+		assert((v_addr < mem_size) && (mem_size - v_addr >= size[i]));
 
-	memcpy(mem_buff + v_addr, in, size);
+	// for(int z = 0; z < size[i]; size++)
+	// {
+	// 	mem_buff[v_addr + z] = in[i][z];
+	// }
+		memcpy(mem_buff + v_addr, in[i], size[i]);
+
+		v_addr += size[i];
+	}
 
 	return hel_success;
 }
