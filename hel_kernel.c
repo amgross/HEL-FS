@@ -415,6 +415,11 @@ hel_ret hel_delete(hel_file_id id)
 	hel_chunk del_file;
 	hel_ret ret;
 
+	if(id > NUM_OF_SECTORS)
+	{
+		return hel_boundaries_err;
+	}
+
 	ret = mem_driver_read(id * sector_size, sizeof(del_file), (char *)&del_file);
 	if(ret != hel_success)
 	{

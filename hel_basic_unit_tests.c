@@ -435,6 +435,19 @@ void big_id_read_test()
 	TEST_ASSERT_(ret == hel_boundaries_err, "expected error hel_boundaries_err-%d but got %d", hel_boundaries_err, ret);
 }
 
+void big_id_delete_test()
+{
+	hel_ret ret;
+
+	mem_driver_init_test(DEFAULT_MEM_SIZE, 0x20);
+	
+	ret = hel_format();
+	TEST_ASSERT_(ret == 0, "Got error %d", ret);
+
+	ret = hel_delete(DEFAULT_MEM_SIZE);
+	TEST_ASSERT_(ret == hel_boundaries_err, "expected error hel_boundaries_err-%d but got %d", hel_boundaries_err, ret);
+}
+
 TEST_LIST = {
     { "basic-test", basic_test },
 	{ "write_too_big_test", write_too_big_test},
@@ -450,6 +463,7 @@ TEST_LIST = {
 	{ "concatinate_test", concatinate_test},
 	{ "fragmented_test", fragmented_test},
 	{ "big_id_read_test", big_id_read_test},
+	{ "big_id_delete_test", big_id_delete_test},
 
     { NULL, NULL }
 };
