@@ -2,7 +2,11 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <setjmp.h>
+#include <stdbool.h>
+
 #include "hel_kernel.h"
+#include "test_utils.h"
 
 
 #define MY_STR1 "hello world!\n"
@@ -15,7 +19,7 @@
 #define DEFAULT_MEM_SIZE 0x400
 #define DEFAULT_SECTOR_SIZE 0x20
 
-void mem_driver_init_test(uint32_t size, uint32_t sector_size);
+static 	hel_file_id g_id1; // This needed to the power down tests , where all locals erases.
 
 void fill_rand_buff(uint8_t *buff, size_t len)
 {
@@ -693,11 +697,65 @@ void init_with_multiple_free_chunks_test()
 
 	ret = hel_init();
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+}
 
+void power_down_in_basic_creation_loop_test()
+{
+	hel_ret ret;
+	int round = 0;
+	char buff[100];
+
+	mem_driver_init_test(DEFAULT_MEM_SIZE, DEFAULT_SECTOR_SIZE);
+	
+	ret = hel_format();
+	TEST_ASSERT_(ret == hel_success, "Got error %d", ret);
+	
+	ret = hel_init();
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	power_down = PD_BEFORE_OERATION_RANDOMLY;
+	power_down_prob = 20;
+	g_id1 = -1;
+
+	setjmp(env);
+
+	round++;
+
+	ret = hel_close();
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	ret = hel_init();
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	if(round == 1000)
+	{
+		return;
+	}
+
+	while(true)
+	{
+		if(g_id1 == -1)
+		{
+			ret = hel_create_and_write(MY_STR1, sizeof(MY_STR1), &g_id1);
+			TEST_ASSERT_(ret == hel_success, "got error %d, round %d", ret, round);
+		}
+
+		// Sanity check that the file exist
+		ret = hel_read(g_id1, buff, sizeof(MY_STR1));
+		TEST_ASSERT_(ret == hel_success, "got error %d, round %d", ret, round);
+
+		TEST_ASSERT(memcmp(buff, MY_STR1, sizeof(MY_STR1)) == 0);
+
+
+		ret = hel_delete(g_id1);
+		TEST_ASSERT_(ret == hel_success, "got error %d, round %d", ret, round);
+
+		g_id1 = -1;
+	}
 }
 
 TEST_LIST = {
-    {"basic-test", basic_test },
+    {"basic-test", basic_test},
 	{"write_too_big_test", write_too_big_test},
 	{"create_too_big_when_file_exist", create_too_big_when_file_exist},
 	{"write_exact_size_test", write_exact_size_test},
@@ -717,6 +775,7 @@ TEST_LIST = {
 	{"basic_init_sign_full_chunks_test", basic_init_sign_full_chunks_test},
 	{"init_with_fragmented_file", init_with_fragmented_file},
 	{"init_with_multiple_free_chunks_test", init_with_multiple_free_chunks_test},
+	{"power_down_in_basic_creation_loop_test", power_down_in_basic_creation_loop_test},
 
     { NULL, NULL }
 };
