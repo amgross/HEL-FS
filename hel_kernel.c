@@ -70,12 +70,11 @@ static hel_ret hel_find_empty_place(hel_file_id id, hel_file_id *out_id)
 	return hel_mem_err; // It may be OK of course
 }
 
-static hel_ret hel_sign_area(hel_chunk *_chunk, hel_file_id start_sector_id, bool all_chain)
+static hel_ret hel_sign_area(hel_chunk *_chunk, hel_file_id start_sector_id, bool all_chain, bool fill)
 {
 	hel_ret ret;
 	hel_chunk chunk = *_chunk;
 	uint32_t num_of_sectors = CHUNK_SIZE_IN_SECTORS(&chunk);
-	bool fill = (chunk.is_file_begin) ? true: false;
 
 	while(true)
 	{
@@ -229,7 +228,7 @@ static hel_ret hel_write_to_chunk(int *size, hel_file_id id, char *buff, bool is
 	new_file.next_file_id = next_id;
 	
 	
-	ret = hel_sign_area(&new_file, id, false);
+	ret = hel_sign_area(&new_file, id, false, true);
 	if(ret != hel_success)
 	{
 		return ret;
@@ -271,7 +270,7 @@ hel_ret hel_init()
 
 	memset(free_map, 0, ROUND_UP_DEV(mem_size / sector_size, 8));
 
-	while((ret = hel_find_empty_place(curr_id, &curr_id)) != hel_success)
+	while((ret = hel_find_empty_place(curr_id, &curr_id)) == hel_success)
 	{ 
 		// TODO optimize to not read in case where curr id was empty
 		ret = mem_driver_read(curr_id * sector_size, sizeof(check_chunk), (char *)&check_chunk);
@@ -282,8 +281,7 @@ hel_ret hel_init()
 
 		if(check_chunk.is_file_begin)
 		{
-			// TODO iterate on whole file!
-			hel_sign_area(&check_chunk, curr_id, false);
+			hel_sign_area(&check_chunk, curr_id, true, true);
 		}
 		else
 		{
@@ -300,6 +298,22 @@ hel_ret hel_init()
 		return ret;
 	}
 	
+	return hel_success;
+}
+
+hel_ret hel_close()
+{
+	hel_ret ret;
+
+	free(free_map);
+	free_map = NULL;
+
+	ret = mem_driver_close();
+	if(ret != hel_success)
+	{
+		return ret;
+	}
+
 	return hel_success;
 }
 
@@ -463,7 +477,7 @@ hel_ret hel_delete(hel_file_id id)
 
 	del_file.is_file_begin = 0;
 
-	ret = hel_sign_area(&del_file, id, true);
+	ret = hel_sign_area(&del_file, id, true, false);
 	if(ret != hel_success)
 	{
 		return ret;
