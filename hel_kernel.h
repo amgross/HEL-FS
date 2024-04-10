@@ -28,6 +28,8 @@ hel_ret hel_format();
 
 hel_ret hel_init();
 
+hel_ret hel_close();
+
 hel_ret hel_create_and_write(char *in, int size, hel_file_id *out_id);
 
 hel_ret hel_read(hel_file_id id, char *out, int size);

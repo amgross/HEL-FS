@@ -520,23 +520,134 @@ void ensure_fragmented_file_fully_deleted()
 	TEST_ASSERT(memcmp(buff, write_buff, sizeof(write_buff)) == 0);
 }
 
+void basic_close_hel_test()
+{
+	hel_file_id id;
+	hel_ret ret;
+	char buff[100];
+	buff[0] = 0;
+
+	mem_driver_init_test(DEFAULT_MEM_SIZE, DEFAULT_SECTOR_SIZE);
+	
+	ret = hel_format();
+	TEST_ASSERT_(ret == hel_success, "Got error %d", ret);
+	
+	ret = hel_create_and_write(MY_STR1, sizeof(MY_STR1), &id);
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+	
+	ret = hel_read(id, buff, sizeof(MY_STR1));
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	TEST_ASSERT(memcmp(buff, MY_STR1, sizeof(MY_STR1)) == 0);
+
+	ret = hel_close();
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	ret = hel_init();
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	ret = hel_read(id, buff, sizeof(MY_STR1));
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	TEST_ASSERT(memcmp(buff, MY_STR1, sizeof(MY_STR1)) == 0);
+}
+
+void init_with_fragmented_file()
+{
+	hel_ret ret;
+	hel_file_id id1, id2, id3;
+	char buff[1000];
+	char write_buff[DEFAULT_SECTOR_SIZE + 1]; // Writing this takes more than 1 sector
+
+	fill_rand_buff((uint8_t *)write_buff, sizeof(write_buff));
+
+	mem_driver_init_test(DEFAULT_SECTOR_SIZE * 3, DEFAULT_SECTOR_SIZE);
+	
+	ret = hel_format();
+	TEST_ASSERT_(ret == hel_success, "Got error %d", ret);
+
+	// fill the three sectors, each one with different file
+
+	ret = hel_create_and_write(MY_STR1, sizeof(MY_STR1), &id1);
+	TEST_ASSERT_(ret == hel_success, "Got error %d", ret);
+
+	ret = hel_create_and_write(MY_STR2, sizeof(MY_STR1), &id2);
+	TEST_ASSERT_(ret == hel_success, "Got error %d", ret);
+
+	ret = hel_create_and_write(MY_STR3, sizeof(MY_STR1), &id3);
+	TEST_ASSERT_(ret == hel_success, "Got error %d", ret);
+
+	// Delete first and third files, to force fragmantation
+	ret = hel_delete(id1);
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	ret = hel_delete(id3);
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	// Sanity checks that things are as expected
+	ret = hel_read(id2, buff, sizeof(MY_STR2));
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	TEST_ASSERT(memcmp(buff, MY_STR2, sizeof(MY_STR2)) == 0);
+
+	ret = hel_read(id1, buff, sizeof(MY_STR2));
+	TEST_ASSERT_(ret == hel_not_file_err, "expected error hel_not_file_err-%d but got %d", hel_not_file_err, ret);
+
+	ret = hel_read(id3, buff, sizeof(MY_STR2));
+	TEST_ASSERT_(ret == hel_not_file_err, "expected error hel_not_file_err-%d but got %d", hel_not_file_err, ret);
+
+	// Create a fragmanted file
+	ret = hel_create_and_write(write_buff, sizeof(write_buff), &id1);
+	TEST_ASSERT_(ret == hel_success, "Got error %d", ret);
+
+	// Sanity check that writing the fragmented file succeeded
+	ret = hel_read(id1, buff, sizeof(write_buff));
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	TEST_ASSERT(memcmp(buff, write_buff, sizeof(write_buff)) == 0);
+
+	// Ensure all space is allocated
+	ret = hel_create_and_write(MY_STR3, sizeof(MY_STR1), &id3);
+	TEST_ASSERT_(ret == hel_mem_err, "expected error hel_mem_err-%d but got %d", hel_mem_err, ret);
+
+	// re-open file system
+
+	ret = hel_close();
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	ret = hel_init();
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	// Sanity check that the fragmented file still exist
+	ret = hel_read(id1, buff, sizeof(write_buff));
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	TEST_ASSERT(memcmp(buff, write_buff, sizeof(write_buff)) == 0);
+
+	// Ensure all space is allocated
+	ret = hel_create_and_write(MY_STR3, sizeof(MY_STR1), &id3);
+	TEST_ASSERT_(ret == hel_mem_err, "expected error hel_mem_err-%d but got %d", hel_mem_err, ret);
+}
+
 TEST_LIST = {
-    { "basic-test", basic_test },
-	{ "write_too_big_test", write_too_big_test},
-	{ "create_too_big_when_file_exist", create_too_big_when_file_exist},
-	{ "write_exact_size_test", write_exact_size_test},
-	{ "read_out_of_boundaries_test", read_out_of_boundaries_test},
-	{ "read_part_of_file_test", read_part_of_file_test},
-	{ "write_read_multiple_files", write_read_multiple_files},
-	{ "null_params_test", null_params_test},
-	{ "delete_in_middle_test", delete_in_middle_test},
-	{ "write_big_when_there_hole_test", write_big_when_there_hole_test},
-	{ "basic_mem_leak_test", basic_mem_leak_test},
-	{ "concatinate_test", concatinate_test},
-	{ "fragmented_test", fragmented_test},
-	{ "big_id_read_test", big_id_read_test},
-	{ "big_id_delete_test", big_id_delete_test},
-	{ "ensure_fragmented_file_fully_deleted", ensure_fragmented_file_fully_deleted},
+    {"basic-test", basic_test },
+	{"write_too_big_test", write_too_big_test},
+	{"create_too_big_when_file_exist", create_too_big_when_file_exist},
+	{"write_exact_size_test", write_exact_size_test},
+	{"read_out_of_boundaries_test", read_out_of_boundaries_test},
+	{"read_part_of_file_test", read_part_of_file_test},
+	{"write_read_multiple_files", write_read_multiple_files},
+	{"null_params_test", null_params_test},
+	{"delete_in_middle_test", delete_in_middle_test},
+	{"write_big_when_there_hole_test", write_big_when_there_hole_test},
+	{"basic_mem_leak_test", basic_mem_leak_test},
+	{"concatinate_test", concatinate_test},
+	{"fragmented_test", fragmented_test},
+	{"big_id_read_test", big_id_read_test},
+	{"big_id_delete_test", big_id_delete_test},
+	{"ensure_fragmented_file_fully_deleted", ensure_fragmented_file_fully_deleted},
+	{"basic_close_hel_test", ensure_fragmented_file_fully_deleted},
+	{"init_with_fragmented_file", init_with_fragmented_file},
 
     { NULL, NULL }
 };
