@@ -335,6 +335,7 @@ hel_ret hel_create_and_write(char *in, int size, hel_file_id *out_id)
 		if(ret != hel_success)
 		{
 			// TODO, change when will have power failure mechanism
+			// TODO ensure in free_mem array all file is free.
 			hel_delete(new_file_id_arr[0]);
 
 			free(new_file_id_arr);
@@ -433,9 +434,7 @@ hel_ret hel_delete(hel_file_id id)
 	}
 
 	// TODO, handle case where need to split it because can't handle it in one chunk (is there is such case?)
-	del_file.size = CHUNK_SIZE_IN_SECTORS(&del_file);
 	del_file.is_file_begin = 0;
-	del_file.is_file_end = 0;
 
 	ret = mem_driver_write(id * sector_size, sizeof(del_file), (char *)&del_file);
 	if(ret != hel_success)
@@ -443,7 +442,7 @@ hel_ret hel_delete(hel_file_id id)
 		return ret;
 	}
 
-
+	// TODO sign whole fie as free and not just first chunk
 	hel_sign_area(&del_file, id, false);
 
 	return hel_success;
