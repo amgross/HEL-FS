@@ -12,7 +12,11 @@
 
 #define MIN_FILE_SIZE sizeof(hel_chunk)
 
-static void fill_rand_buff(uint8_t *buff, size_t len)
+#define DEFAULT_MEM_SIZE 0x400
+
+void mem_driver_init_test(uint32_t size, uint32_t sector_size);
+
+void fill_rand_buff(uint8_t *buff, size_t len)
 {
 	for(size_t i = 0;i < len; i++)
 	{
@@ -26,6 +30,8 @@ void basic_test()
 	hel_ret ret;
 	char buff[100];
 	buff[0] = 0;
+
+	mem_driver_init_test(DEFAULT_MEM_SIZE, 0x20);
 	
 	ret = hel_format();
 	TEST_ASSERT_(ret == 0, "Got error %d", ret);
@@ -49,21 +55,23 @@ void write_too_big_test()
 {
 	hel_file_id id;
 	hel_ret ret;
-	char buff[MEM_SIZE * 2];
+	char buff[DEFAULT_MEM_SIZE * 2];
 
+	mem_driver_init_test(DEFAULT_MEM_SIZE, 0x20);
+	
 	ret = hel_format();
 	TEST_ASSERT_(ret == 0, "Got error %d", ret);
 
 	ret = hel_create_and_write(buff, sizeof(buff), &id);
 	TEST_ASSERT_(ret == hel_mem_err, "expected error hel_mem_err-%d but got %d", hel_mem_err, ret);
 
-	ret = hel_create_and_write(buff, MEM_SIZE, &id);
+	ret = hel_create_and_write(buff, DEFAULT_MEM_SIZE, &id);
 	TEST_ASSERT_(ret == hel_mem_err, "expected error hel_mem_err-%d but got %d", hel_mem_err, ret);
 
-	ret = hel_create_and_write(buff, MEM_SIZE - MIN_FILE_SIZE + 1, &id);
+	ret = hel_create_and_write(buff, DEFAULT_MEM_SIZE - MIN_FILE_SIZE + 1, &id);
 	TEST_ASSERT_(ret == hel_mem_err, "expected error hel_mem_err-%d but got %d", hel_mem_err, ret);
 
-	ret = hel_create_and_write(buff, MEM_SIZE - MIN_FILE_SIZE, &id);
+	ret = hel_create_and_write(buff, DEFAULT_MEM_SIZE - MIN_FILE_SIZE, &id);
 	TEST_ASSERT_(ret == 0, "got error - %d", ret);
 }
 
@@ -71,16 +79,18 @@ void create_too_big_when_file_exist()
 {
 	hel_file_id id;
 	hel_ret ret;
-	char buff[MEM_SIZE * 2];
+	char buff[DEFAULT_MEM_SIZE * 2];
 	buff[0] = 0;
 
+	mem_driver_init_test(DEFAULT_MEM_SIZE, 0x20);
+	
 	ret = hel_format();
 	TEST_ASSERT_(ret == 0, "Got error %d", ret);
 
 	ret = hel_create_and_write(MY_STR1, sizeof(MY_STR1), &id);
 	TEST_ASSERT_(ret == 0, "got error %d", ret);
 
-	ret = hel_create_and_write(buff, MEM_SIZE, &id);
+	ret = hel_create_and_write(buff, DEFAULT_MEM_SIZE, &id);
 	TEST_ASSERT_(ret == hel_mem_err, "expected error hel_mem_err-%d but got %d", hel_mem_err, ret);
 }
 
@@ -88,11 +98,13 @@ void write_exact_size_test()
 {
 	hel_file_id id;
 	hel_ret ret;
-	char buff[MEM_SIZE];
+	char buff[DEFAULT_MEM_SIZE];
 	fill_rand_buff((uint8_t *)buff, sizeof(buff));
 	char out_buff[sizeof(buff)];
-	int size_to_write = MEM_SIZE - MIN_FILE_SIZE;
+	int size_to_write = DEFAULT_MEM_SIZE - MIN_FILE_SIZE;
 
+	mem_driver_init_test(DEFAULT_MEM_SIZE, 0x20);
+	
 	ret = hel_format();
 	TEST_ASSERT_(ret == 0, "Got error %d", ret);
 
@@ -112,6 +124,8 @@ void read_out_of_boundaries_test()
 	char buff[100];
 	buff[0] = 0;
 
+	mem_driver_init_test(DEFAULT_MEM_SIZE, 0x20);
+	
 	ret = hel_format();
 	TEST_ASSERT_(ret == 0, "Got error %d", ret);
 
@@ -130,6 +144,8 @@ void read_part_of_file_test()
 	buff[0] = 0;
 	int size_to_read = sizeof(MY_STR1) - 1;
 
+	mem_driver_init_test(DEFAULT_MEM_SIZE, 0x20);
+	
 	ret = hel_format();
 	TEST_ASSERT_(ret == 0, "Got error %d", ret);
 
@@ -149,6 +165,8 @@ void write_read_multiple_files()
 	char buff[100];
 	buff[0] = 0;
 
+	mem_driver_init_test(DEFAULT_MEM_SIZE, 0x20);
+	
 	ret = hel_format();
 	TEST_ASSERT_(ret == 0, "Got error %d", ret);
 
@@ -176,6 +194,8 @@ void null_params_test()
 {
 	hel_ret ret;
 
+	mem_driver_init_test(DEFAULT_MEM_SIZE, 0x20);
+	
 	ret = hel_format();
 	TEST_ASSERT_(ret == 0, "Got error %d", ret);
 
@@ -190,6 +210,8 @@ void delete_in_middle_test()
 	char buff[100];
 	buff[0] = 0;
 
+	mem_driver_init_test(DEFAULT_MEM_SIZE, 0x20);
+	
 	ret = hel_format();
 	TEST_ASSERT_(ret == 0, "Got error %d", ret);
 
@@ -250,6 +272,8 @@ void write_big_when_there_hole_test()
 	char buff[1000];
 	buff[0] = 0;
 
+	mem_driver_init_test(DEFAULT_MEM_SIZE, 0x20);
+	
 	ret = hel_format();
 	TEST_ASSERT_(ret == 0, "Got error %d", ret);
 
@@ -309,10 +333,12 @@ void basic_mem_leak_test()
 	char buff[100];
 	buff[0] = 0;
 	
+	mem_driver_init_test(DEFAULT_MEM_SIZE, 0x20);
+	
 	ret = hel_format();
 	TEST_ASSERT_(ret == 0, "Got error %d", ret);
 	
-	for(int i = 0; i < MEM_SIZE; i++)
+	for(int i = 0; i < DEFAULT_MEM_SIZE; i++)
 	{
 		ret = hel_create_and_write(MY_STR1, sizeof(MY_STR1), &id);
 		TEST_ASSERT_(ret == 0, "got error %d, cycle %d", ret, i);
@@ -334,8 +360,10 @@ void concatinate_test()
 {
 	hel_file_id id1, id2, id3;
 	hel_ret ret;
-	char buff[(MEM_SIZE / 3) * 2];
+	char buff[(DEFAULT_MEM_SIZE / 3) * 2];
 
+	mem_driver_init_test(DEFAULT_MEM_SIZE, 0x20);
+	
 	ret = hel_format();
 	TEST_ASSERT_(ret == 0, "Got error %d", ret);
 
@@ -362,10 +390,12 @@ void fragmented_test()
 {
 	hel_file_id id1, id2, id3;
 	hel_ret ret;
-	char buff[(MEM_SIZE / 3) * 2];
+	char buff[(DEFAULT_MEM_SIZE / 3) * 2];
 	char buff_2[sizeof(buff)];
 	fill_rand_buff((uint8_t *)buff, sizeof(buff));
 
+	mem_driver_init_test(DEFAULT_MEM_SIZE, 0x20);
+	
 	ret = hel_format();
 	TEST_ASSERT_(ret == 0, "Got error %d", ret);
 
