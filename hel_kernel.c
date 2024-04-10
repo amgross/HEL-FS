@@ -27,7 +27,7 @@ static uint8_t *free_map;
 static uint32_t mem_size;
 static uint32_t sector_size;
 
-static hel_ret hel_iterator(hel_chunk *curr_file, hel_file_id id)
+static hel_ret hel_iterator(hel_chunk *curr_file, hel_file_id *id)
 {
 	hel_file_id next_id;
 	hel_ret ret;
@@ -38,7 +38,7 @@ static hel_ret hel_iterator(hel_chunk *curr_file, hel_file_id id)
 	}
 	else
 	{
-		next_id = id + CHUNK_SIZE_IN_SECTORS(curr_file);
+		next_id = *id + CHUNK_SIZE_IN_SECTORS(curr_file);
 		assert(next_id <= NUM_OF_SECTORS);
 
 		if(next_id >= NUM_OF_SECTORS)
@@ -52,6 +52,8 @@ static hel_ret hel_iterator(hel_chunk *curr_file, hel_file_id id)
 	{
 		return ret;
 	}
+
+	*id = next_id;
 	
 	return ret;
 }
@@ -293,7 +295,7 @@ hel_ret hel_init()
 		}
 		else
 		{
-			ret = hel_iterator(&check_chunk, curr_id);
+			ret = hel_iterator(&check_chunk, &curr_id);
 			if(ret != hel_success)
 			{
 				break;
