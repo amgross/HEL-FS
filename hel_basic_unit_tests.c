@@ -421,6 +421,19 @@ void fragmented_test()
 
 }
 
+void big_id_read_test()
+{
+	hel_ret ret;
+	char out;
+
+	mem_driver_init_test(DEFAULT_MEM_SIZE, 0x20);
+	
+	ret = hel_format();
+	TEST_ASSERT_(ret == 0, "Got error %d", ret);
+
+	ret = hel_read(DEFAULT_MEM_SIZE, &out, 1);
+	TEST_ASSERT_(ret == hel_boundaries_err, "expected error hel_boundaries_err-%d but got %d", hel_boundaries_err, ret);
+}
 
 TEST_LIST = {
     { "basic-test", basic_test },
@@ -436,6 +449,7 @@ TEST_LIST = {
 	{ "basic_mem_leak_test", basic_mem_leak_test},
 	{ "concatinate_test", concatinate_test},
 	{ "fragmented_test", fragmented_test},
+	{ "big_id_read_test", big_id_read_test},
 
     { NULL, NULL }
 };

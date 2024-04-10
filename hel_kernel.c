@@ -352,7 +352,7 @@ hel_ret hel_create_and_write(char *in, int size, hel_file_id *out_id)
 
 	free(new_file_id_arr);
 	
-	return 0;
+	return hel_success;
 }
 
 hel_ret hel_read(hel_file_id id, char *out, int size)
@@ -360,7 +360,10 @@ hel_ret hel_read(hel_file_id id, char *out, int size)
 	hel_chunk read_file;
 	hel_ret ret;
 
-	// TODO add sanity test on ID
+	if(id > NUM_OF_SECTORS)
+	{
+		return hel_boundaries_err;
+	}
 
 	ret = mem_driver_read(id * sector_size, sizeof(read_file), (char *)&read_file);
 	if(ret != hel_success)
