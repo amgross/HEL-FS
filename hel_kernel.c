@@ -43,7 +43,7 @@ static hel_ret hel_iterator(hel_chunk *curr_file, hel_file_id *id)
 
 		if(next_id >= NUM_OF_SECTORS)
 		{
-			return hel_mem_err; // This ca be OK
+			return hel_mem_err; // This can be OK
 		}
 	}
 
@@ -282,7 +282,6 @@ hel_ret hel_init()
 
 	while((ret = hel_find_empty_place(curr_id, &curr_id)) == hel_success)
 	{ 
-		// TODO optimize to not read in case where curr id was empty
 		ret = mem_driver_read(curr_id * sector_size, sizeof(check_chunk), (char *)&check_chunk);
 		if(ret != hel_success)
 		{
