@@ -1,6 +1,5 @@
 
-#define MEM_SIZE 0x400
-#define SECTOR_SIZE 0X20
+#pragma once
 
 typedef enum
 {
