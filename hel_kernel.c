@@ -174,10 +174,18 @@ static hel_ret hel_get_chunks_for_file(int size, hel_file_id **chunks_arr, int *
 	return hel_success;
 }
 
+static hel_ret mem_write_one_helper(uint32_t v_addr, int size, char *in)
+{
+	return mem_driver_write(v_addr, &size, &in, 1);
+}
+
 // size is in-out
 static hel_ret hel_write_to_chunk(int *size, hel_file_id id, char *buff, bool is_first, hel_file_id next_id)
 {
 	hel_chunk new_file;
+	char *p_chunk_for_mem;
+	char *pp_chunk_for_mem[2];
+	int p_size_for_mem[2];
 	int empty_sectors;
 	hel_ret ret;
 	int needed_sectors = ROUND_UP_DEV(*size + sizeof(hel_chunk), sector_size);
@@ -191,8 +199,9 @@ static hel_ret hel_write_to_chunk(int *size, hel_file_id id, char *buff, bool is
 
 		next_chunk.is_file_begin = 0;
 		next_chunk.is_file_end = 0;
-		next_chunk.size = empty_sectors - needed_sectors;
-		ret = mem_driver_write((id + needed_sectors) * sector_size, sizeof(next_chunk), (char *)&next_chunk);
+		next_chunk.size = empty_sectors - needed_sectors;\
+
+		ret = mem_write_one_helper((id + needed_sectors) * sector_size, sizeof(next_chunk), (char *)&next_chunk);
 		if(ret != hel_success)
 		{
 			return ret;
@@ -234,21 +243,20 @@ static hel_ret hel_write_to_chunk(int *size, hel_file_id id, char *buff, bool is
 		return ret;
 	}
 
-	// 	TODO write both data and metadata together protected against power failure
-	ret = mem_driver_write(id * sector_size, sizeof(new_file), (char *)&new_file);
-	if(ret != hel_success)
-	{
-		return ret;
-	}
+	p_chunk_for_mem = (char *)&new_file;
+	pp_chunk_for_mem[0] = p_chunk_for_mem;
+	p_size_for_mem[0] = sizeof(new_file);
 
-	ret = mem_driver_write((id * sector_size) + sizeof(new_file), *size, buff);
+	pp_chunk_for_mem[1] = buff;
+	p_size_for_mem[1] = *size;
+	ret = mem_driver_write(id * sector_size, p_size_for_mem, pp_chunk_for_mem, 2);
 	if(ret != hel_success)
 	{
 		return ret;
 	}
 
 	return hel_success;
-} 
+}
 
 hel_ret hel_init()
 {
@@ -336,7 +344,7 @@ hel_ret hel_format()
 	first_chunk.is_file_begin = 0;
 	first_chunk.is_file_end = 0;
 
-	ret = mem_driver_write(0, sizeof(first_chunk), (char *)&first_chunk);
+	ret = mem_write_one_helper(0, sizeof(first_chunk), (char *)&first_chunk);
 	if(ret != hel_success)
 	{
 		return ret;
@@ -483,7 +491,7 @@ hel_ret hel_delete(hel_file_id id)
 		return ret;
 	}
 
-	ret = mem_driver_write(id * sector_size, sizeof(del_file), (char *)&del_file);
+	ret = mem_write_one_helper(id * sector_size, sizeof(del_file), (char *)&del_file);
 	if(ret != hel_success)
 	{
 		return ret;
