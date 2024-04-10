@@ -70,21 +70,45 @@ static hel_ret hel_find_empty_place(hel_file_id id, hel_file_id *out_id)
 	return hel_mem_err; // It may be OK of course
 }
 
-static void hel_sign_area(hel_chunk *chunk, hel_file_id start_sector_id, bool fill)
+static hel_ret hel_sign_area(hel_chunk *_chunk, hel_file_id start_sector_id, bool all_chain)
 {
-	uint32_t num_of_sectors = CHUNK_SIZE_IN_SECTORS(chunk);
+	hel_ret ret;
+	hel_chunk chunk = *_chunk;
+	uint32_t num_of_sectors = CHUNK_SIZE_IN_SECTORS(&chunk);
+	bool fill = (chunk.is_file_begin) ? true: false;
 
-	for(hel_file_id id = start_sector_id; id < start_sector_id + num_of_sectors; id++)
+	while(true)
 	{
-		if(fill)
+		for(hel_file_id id = start_sector_id; id < start_sector_id + num_of_sectors; id++)
 		{
-			SET_FREE_BIT(id);
+			if(fill)
+			{
+				SET_FREE_BIT(id);
+			}
+			else
+			{
+				UNSET_FREE_BIT(id);
+			}
 		}
-		else
+
+		if(!all_chain || chunk.is_file_end)
 		{
-			UNSET_FREE_BIT(id);
+			break;
 		}
+
+		start_sector_id = chunk.next_file_id;
+
+		ret = mem_driver_read(chunk.next_file_id * sector_size, sizeof(chunk), (char *)&chunk);
+		if(ret != hel_success)
+		{
+			// TODO how toheal from this?
+			return ret;
+		}
+
+		num_of_sectors = CHUNK_SIZE_IN_SECTORS(&chunk);
 	}
+
+	return hel_success;
 }
 
 static int hel_count_empty_sectors(hel_file_id id)
@@ -205,7 +229,11 @@ static hel_ret hel_write_to_chunk(int *size, hel_file_id id, char *buff, bool is
 	new_file.next_file_id = next_id;
 	
 	
-	hel_sign_area(&new_file, id, true);
+	ret = hel_sign_area(&new_file, id, false);
+	if(ret != hel_success)
+	{
+		return ret;
+	}
 
 	// 	TODO write both data and metadata together protected against power failure
 	ret = mem_driver_write(id * sector_size, sizeof(new_file), (char *)&new_file);
@@ -255,7 +283,7 @@ hel_ret hel_init()
 		if(check_chunk.is_file_begin)
 		{
 			// TODO iterate on whole file!
-			hel_sign_area(&check_chunk, curr_id, true);
+			hel_sign_area(&check_chunk, curr_id, false);
 		}
 		else
 		{
@@ -433,17 +461,19 @@ hel_ret hel_delete(hel_file_id id)
 		return hel_not_file_err;
 	}
 
-	// TODO, handle case where need to split it because can't handle it in one chunk (is there is such case?)
 	del_file.is_file_begin = 0;
+
+	ret = hel_sign_area(&del_file, id, true);
+	if(ret != hel_success)
+	{
+		return ret;
+	}
 
 	ret = mem_driver_write(id * sector_size, sizeof(del_file), (char *)&del_file);
 	if(ret != hel_success)
 	{
 		return ret;
 	}
-
-	// TODO sign whole fie as free and not just first chunk
-	hel_sign_area(&del_file, id, false);
 
 	return hel_success;
 }
