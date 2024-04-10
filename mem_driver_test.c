@@ -3,14 +3,35 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+#include <setjmp.h>
+#include <stdbool.h>
+
 
 #include "hel_kernel.h"
+#include "test_utils.h"
 
 static uint8_t *mem_buff = NULL;
 static uint32_t mem_size;
 static uint32_t sector_size;
 
+jmp_buf env;
+power_down_option power_down = PD_NONE;
+int power_down_prob = 0;
+
 extern void fill_rand_buff(uint8_t *buff, size_t len);
+
+static void decide_if_power_down_before_all()
+{
+	if(power_down == PD_BEFORE_OERATION_RANDOMLY)
+	{
+		if((rand() % power_down_prob) == 0)
+		{
+			longjmp(env, 0);
+			assert(false);
+		}
+
+	}
+}
 
 void mem_driver_init_test(uint32_t size, uint32_t _sector_size)
 {
@@ -44,14 +65,12 @@ hel_ret mem_driver_close()
 hel_ret mem_driver_write(uint32_t v_addr, int* size, char **in, int buffs_num)
 {
 	assert(mem_buff != NULL);
+	decide_if_power_down_before_all();
+
 	for(int i = 0; i < buffs_num; i++)
 	{
 		assert((v_addr < mem_size) && (mem_size - v_addr >= size[i]));
 
-	// for(int z = 0; z < size[i]; size++)
-	// {
-	// 	mem_buff[v_addr + z] = in[i][z];
-	// }
 		memcpy(mem_buff + v_addr, in[i], size[i]);
 
 		v_addr += size[i];
