@@ -5,6 +5,7 @@
 #include <string.h>
 #include <setjmp.h>
 #include <stdbool.h>
+#include <math.h>
 
 
 #include "hel_kernel.h"
@@ -14,23 +15,69 @@ static uint8_t *mem_buff = NULL;
 static uint32_t mem_size;
 static uint32_t sector_size;
 
+#define HEL_MIN(x, y) ((x > y) ? y: x)
+
 jmp_buf env;
 power_down_option power_down = PD_NONE;
 int power_down_prob = 0;
 
 extern void fill_rand_buff(uint8_t *buff, size_t len);
 
-static void decide_if_power_down_before_all()
+static bool decide_if_power_down(int *size, int num)
 {
-	if(power_down == PD_BEFORE_OERATION_RANDOMLY)
+	switch(power_down)
 	{
-		if((rand() % power_down_prob) == 0)
+		case PD_NONE:
 		{
-			longjmp(env, 0);
+			return false;
+		}
+		case PD_BEFORE_OERATION_RANDOMLY:
+		{
+			if((rand() % power_down_prob) == 0)
+			{
+				longjmp(env, 0);
+				assert(false);
+			}
+			else
+			{
+				return false;
+			}
+		}
+		case PD_IN_MIDDLE_RANDOMLY:
+		{
+			if((rand() % power_down_prob) == 0)
+			{
+				int total_size = 0;
+				for(int i = 0; i < num; i++)
+				{
+					total_size += size[i];
+				}
+
+				if(total_size != 0)
+				{
+					total_size = rand() % total_size;
+				}
+				
+				for(int i = 0; i < num; i++)
+				{
+					size[i] = HEL_MIN(size[i], total_size); // There is no problem to change it as anyway we about to power down
+					total_size -= size[i];
+				}
+
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+		}
+		default:
+		{
 			assert(false);
 		}
-
 	}
+	
+	return false;
 }
 
 void mem_driver_init_test(uint32_t size, uint32_t _sector_size)
@@ -65,16 +112,34 @@ hel_ret mem_driver_close()
 hel_ret mem_driver_write(uint32_t v_addr, int* size, char **in, int buffs_num)
 {
 	assert(mem_buff != NULL);
-	decide_if_power_down_before_all();
+	assert(size[0] >= sizeof(hel_chunk));
+
+	// THis is for writing the metadata in the end atomically
+	char *metadata = in[0];
+	in[0] += sizeof(hel_chunk);
+	uint32_t orig_v_addr = v_addr;
+	v_addr += sizeof(hel_chunk);
+	size[0] -= sizeof(hel_chunk);
+
+	bool down = decide_if_power_down(size, buffs_num);
 
 	for(int i = 0; i < buffs_num; i++)
 	{
+		int curr_size = size[i];
 		assert((v_addr < mem_size) && (mem_size - v_addr >= size[i]));
 
-		memcpy(mem_buff + v_addr, in[i], size[i]);
+		memcpy(mem_buff + v_addr, in[i], curr_size);
 
 		v_addr += size[i];
 	}
+
+	if(down)
+	{
+		longjmp(env, 0);
+	}
+
+	memcpy(mem_buff + orig_v_addr, metadata, sizeof(hel_chunk));
+
 
 	return hel_success;
 }
