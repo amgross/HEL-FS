@@ -27,6 +27,13 @@ static uint8_t *free_map;
 static uint32_t mem_size;
 static uint32_t sector_size;
 
+typedef struct
+{
+	hel_file_id id;
+	int size;
+}chunk_data;
+
+
 static hel_ret hel_iterator(hel_chunk *curr_file, hel_file_id *id)
 {
 	hel_file_id next_id;
@@ -129,11 +136,11 @@ static int hel_count_empty_sectors(hel_file_id id)
 	return ret;
 }
 
-static hel_ret hel_get_chunks_for_file(int size, hel_file_id **chunks_arr, int *chunks_num)
+static hel_ret hel_get_chunks_for_file(int size, chunk_data **chunks_arr, int *chunks_num)
 {
 	hel_file_id new_file_id = 0;
 	int empty_sectors;
-	hel_file_id *chunks_arr_tmp;
+	chunk_data *chunks_arr_tmp;
 	hel_ret ret;
 
 	*chunks_arr = NULL;
@@ -143,7 +150,7 @@ static hel_ret hel_get_chunks_for_file(int size, hel_file_id **chunks_arr, int *
 	while((ret = hel_find_empty_place(new_file_id, &new_file_id)) == hel_success)
 	{			
 		empty_sectors = hel_count_empty_sectors(new_file_id);
-		chunks_arr_tmp = (hel_file_id *)realloc(*chunks_arr, (*chunks_num + 1) * sizeof(hel_file_id));
+		chunks_arr_tmp = (chunk_data *)realloc(*chunks_arr, (*chunks_num + 1) * sizeof(chunk_data));
 		if(chunks_arr_tmp == NULL)
 		{
 			free(*chunks_arr);
@@ -151,18 +158,22 @@ static hel_ret hel_get_chunks_for_file(int size, hel_file_id **chunks_arr, int *
 		}
 
 		*chunks_arr = chunks_arr_tmp;
-		(*chunks_arr)[*chunks_num] = new_file_id;
-		(*chunks_num)++;
+		(*chunks_arr)[*chunks_num].id = new_file_id;
 
 		int size_in_empty = (empty_sectors * sector_size) - sizeof(hel_chunk);
 		if(size_in_empty >= size)
 		{
+			(*chunks_arr)[*chunks_num].size = size;
+			(*chunks_num)++;
 			break;
 		}
 		else
 		{
 			new_file_id += empty_sectors;
 			size -= size_in_empty;
+
+			(*chunks_arr)[*chunks_num].size = size_in_empty;
+			(*chunks_num)++;
 		}
 	}
 
@@ -182,7 +193,7 @@ static hel_ret mem_write_one_helper(uint32_t v_addr, int size, char *in)
 }
 
 // size is in-out
-static hel_ret hel_write_to_chunk(int *size, hel_file_id id, char *buff, bool is_first, hel_file_id next_id)
+static hel_ret hel_write_to_chunk(int size, hel_file_id id, char *buff, bool is_first, hel_file_id next_id)
 {
 	hel_chunk new_file;
 	char *p_chunk_for_mem;
@@ -190,7 +201,7 @@ static hel_ret hel_write_to_chunk(int *size, hel_file_id id, char *buff, bool is
 	int p_size_for_mem[2];
 	int empty_sectors;
 	hel_ret ret;
-	int needed_sectors = ROUND_UP_DEV(*size + sizeof(hel_chunk), sector_size);
+	int needed_sectors = ROUND_UP_DEV(size + sizeof(hel_chunk), sector_size);
 
 	empty_sectors = hel_count_empty_sectors(id);
 
@@ -213,17 +224,19 @@ static hel_ret hel_write_to_chunk(int *size, hel_file_id id, char *buff, bool is
 	}
 	
 	// TODO there is corner case where there isn't enough sectors because the size is in bytes
-	if(empty_sectors < needed_sectors)
+	assert(empty_sectors >= needed_sectors);
+
+	if(next_id != -1)
 	{
 		// This is not end of file, size is in sectors.
-		new_file.size = empty_sectors;
+		new_file.size = needed_sectors;
 		new_file.is_file_end = 0;
-		*size = (empty_sectors *sector_size) - sizeof(hel_chunk);
+		size = (needed_sectors * sector_size) - sizeof(hel_chunk);
 	}
 	else
 	{
 		// This is end of file, size is in bytes.
-		new_file.size = *size;
+		new_file.size = size;
 		new_file.is_file_end = 1;
 	}
 
@@ -250,7 +263,7 @@ static hel_ret hel_write_to_chunk(int *size, hel_file_id id, char *buff, bool is
 	p_size_for_mem[0] = sizeof(new_file);
 
 	pp_chunk_for_mem[1] = buff;
-	p_size_for_mem[1] = *size;
+	p_size_for_mem[1] = size;
 	ret = mem_driver_write(id * sector_size, p_size_for_mem, pp_chunk_for_mem, 2);
 	if(ret != hel_success)
 	{
@@ -364,7 +377,7 @@ void print_file(hel_chunk *file, hel_file_id id)
 
 hel_ret hel_create_and_write(char *in, int size, hel_file_id *out_id)
 {
-	hel_file_id *new_file_id_arr;
+	chunk_data *new_chunks_arr;
 	int chunks_num;
 	hel_ret ret;
 
@@ -373,36 +386,38 @@ hel_ret hel_create_and_write(char *in, int size, hel_file_id *out_id)
 		return hel_param_err;
 	}
 	
-	ret = hel_get_chunks_for_file(size, &new_file_id_arr, &chunks_num);
+	ret = hel_get_chunks_for_file(size, &new_chunks_arr, &chunks_num);
 	if(ret != hel_success)
 	{
 		return ret;
 	}
 
-	for(int i = 0; i < chunks_num; i++)
+	// We are writing from end to start (due to power down protection)
+	in += size;
+
+	for(int i = chunks_num - 1; i != -1; i--)
 	{
-		int write_size = size;
-		ret = hel_write_to_chunk(&write_size, new_file_id_arr[i], in, i == 0, (i == chunks_num - 1)? 0: new_file_id_arr[i + 1]);
+		int write_size = new_chunks_arr[i].size;
+		in -= write_size;
+
+		ret = hel_write_to_chunk(write_size, new_chunks_arr[i].id, in, i == 0, (i == chunks_num - 1)? -1: new_chunks_arr[i + 1].id);
 		if(ret != hel_success)
 		{
-			// TODO, change when will have power failure mechanism
-			// TODO ensure in free_mem array all file is free.
-			hel_delete(new_file_id_arr[0]);
+			/// No need to delete something in case of failure, if not all chunks written so nothing really done.
 
-			free(new_file_id_arr);
+			free(new_chunks_arr);
 			return ret;
 		}
 
-		in += write_size;
 		size -= write_size;
-		assert((i == chunks_num - 1) || (size > 0));
+		assert((i == 0) || (size > 0));
 	}
 
 	assert(size == 0);
 	
-	*out_id = new_file_id_arr[0];
+	*out_id = new_chunks_arr[0].id;
 
-	free(new_file_id_arr);
+	free(new_chunks_arr);
 	
 	return hel_success;
 }
