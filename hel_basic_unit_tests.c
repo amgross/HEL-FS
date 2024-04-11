@@ -19,7 +19,9 @@
 #define DEFAULT_MEM_SIZE 0x400
 #define DEFAULT_SECTOR_SIZE 0x20
 
-static 	hel_file_id g_id1; // This needed to the power down tests , where all locals erases.
+ // This needed to the power down tests , where all locals erases.
+static 	hel_file_id g_id1;
+static bool g_file_created = false;
 
 void fill_rand_buff(uint8_t *buff, size_t len)
 {
@@ -734,10 +736,12 @@ void power_down_in_basic_creation_loop_test()
 
 	while(true)
 	{
-		if(g_id1 == -1)
+		if(!g_file_created)
 		{
 			ret = hel_create_and_write(MY_STR1, sizeof(MY_STR1), &g_id1);
 			TEST_ASSERT_(ret == hel_success, "got error %d, round %d", ret, round);
+
+			g_file_created = true;
 		}
 
 		// Sanity check that the file exist
@@ -750,7 +754,78 @@ void power_down_in_basic_creation_loop_test()
 		ret = hel_delete(g_id1);
 		TEST_ASSERT_(ret == hel_success, "got error %d, round %d", ret, round);
 
-		g_id1 = -1;
+		g_file_created = false;
+	}
+}
+
+void power_down_in_fragmented_files_creation_loop_test()
+{
+	hel_ret ret;
+	hel_file_id id1, id2;
+	int round = 0;
+	char buff[DEFAULT_SECTOR_SIZE + 1];
+	char buff_out[sizeof(buff)];
+
+	mem_driver_init_test(DEFAULT_SECTOR_SIZE * 3, DEFAULT_SECTOR_SIZE);
+	
+	ret = hel_format();
+	TEST_ASSERT_(ret == hel_success, "Got error %d", ret);
+	
+	ret = hel_init();
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+
+	ret = hel_create_and_write(MY_STR1, sizeof(MY_STR1), &id1);
+	TEST_ASSERT_(ret == hel_success, "Got error %d", ret);
+
+	ret = hel_create_and_write(MY_STR2, sizeof(MY_STR1), &id2);
+	TEST_ASSERT_(ret == hel_success, "Got error %d", ret);
+
+	ret = hel_delete(id1);
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+
+
+	power_down = PD_BEFORE_OERATION_RANDOMLY;
+	power_down_prob = 20;
+	g_id1 = -1;
+
+	setjmp(env);
+
+	round++;
+
+	ret = hel_close();
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	ret = hel_init();
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	if(round == 1000)
+	{
+		return;
+	}
+
+	while(true)
+	{
+		if(!g_file_created)
+		{
+			fill_rand_buff((uint8_t *)buff, sizeof(buff));
+			ret = hel_create_and_write(buff, sizeof(buff), &g_id1);
+			TEST_ASSERT_(ret == hel_success, "got error %d, round %d", ret, round);
+
+			g_file_created = true;
+		}
+
+		// Sanity check that the file exist
+		ret = hel_read(g_id1, buff_out, sizeof(buff));
+		TEST_ASSERT_(ret == hel_success, "got error %d, round %d", ret, round);
+
+		TEST_ASSERT(memcmp(buff, buff_out, sizeof(buff)) == 0);
+
+		ret = hel_delete(g_id1);
+		TEST_ASSERT_(ret == hel_success, "got error %d, round %d", ret, round);
+
+		g_file_created = false;
 	}
 }
 
@@ -776,6 +851,7 @@ TEST_LIST = {
 	{"init_with_fragmented_file", init_with_fragmented_file},
 	{"init_with_multiple_free_chunks_test", init_with_multiple_free_chunks_test},
 	{"power_down_in_basic_creation_loop_test", power_down_in_basic_creation_loop_test},
+	{"power_down_in_fragmented_files_creation_loop_test", power_down_in_fragmented_files_creation_loop_test},
 
     { NULL, NULL }
 };
