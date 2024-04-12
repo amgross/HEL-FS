@@ -886,6 +886,80 @@ void power_down_in_middle_writing_test()
 	}
 }
 
+void power_down_in_defragment_test()
+{
+	hel_ret ret;
+	hel_file_id id1, id2;
+	int round = 0;
+	char buff[DEFAULT_SECTOR_SIZE + 4];
+	char buff_out[sizeof(buff)];
+
+	mem_driver_init_test(DEFAULT_SECTOR_SIZE * 3, DEFAULT_SECTOR_SIZE);
+	
+	ret = hel_format();
+	TEST_ASSERT_(ret == hel_success, "Got error %d", ret);
+	
+	ret = hel_init();
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	power_down_prob = 20;
+	g_id1 = -1;
+
+	setjmp(env);
+
+	round++;
+
+	ret = hel_close();
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	ret = hel_init();
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	if(round == 1000)
+	{
+		return;
+	}
+
+	while(true)
+	{
+		power_down = PD_IN_MIDDLE_RANDOMLY;
+
+		if(!g_file_created)
+		{
+			fill_rand_buff((uint8_t *)buff, sizeof(buff));
+			ret = hel_create_and_write(buff, sizeof(buff), &g_id1);
+			TEST_ASSERT_(ret == hel_success, "got error %d, round %d", ret, round);
+
+			g_file_created = true;
+		}
+
+		// Sanity check that the file exist
+		ret = hel_read(g_id1, buff_out, sizeof(buff));
+		TEST_ASSERT_(ret == hel_success, "got error %d, round %d", ret, round);
+
+		TEST_ASSERT(memcmp(buff, buff_out, sizeof(buff)) == 0);
+
+		ret = hel_delete(g_id1);
+		TEST_ASSERT_(ret == hel_success, "got error %d, round %d", ret, round);
+
+		g_file_created = false;
+
+		power_down = PD_NONE;
+		ret = hel_create_and_write(MY_STR1, sizeof(MY_STR1), &id1);
+		TEST_ASSERT_(ret == hel_success, "Got error %d", ret);
+
+		ret = hel_create_and_write(MY_STR2, sizeof(MY_STR1), &id2);
+		TEST_ASSERT_(ret == hel_success, "Got error %d", ret);
+
+		ret = hel_delete(id1);
+		TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+		ret = hel_delete(id2);
+		TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+	}
+
+}
+
 TEST_LIST = {
     {"basic-test", basic_test},
 	{"write_too_big_test", write_too_big_test},
@@ -903,13 +977,14 @@ TEST_LIST = {
 	{"big_id_read_test", big_id_read_test},
 	{"big_id_delete_test", big_id_delete_test},
 	{"ensure_fragmented_file_fully_deleted", ensure_fragmented_file_fully_deleted},
-	{"basic_close_hel_test", ensure_fragmented_file_fully_deleted},
+	{"basic_close_hel_test", basic_close_hel_test},
 	{"basic_init_sign_full_chunks_test", basic_init_sign_full_chunks_test},
 	{"init_with_fragmented_file", init_with_fragmented_file},
 	{"init_with_multiple_free_chunks_test", init_with_multiple_free_chunks_test},
 	{"power_down_in_basic_creation_loop_test", power_down_in_basic_creation_loop_test},
 	{"power_down_in_fragmented_files_creation_loop_test", power_down_in_fragmented_files_creation_loop_test},
 	{"power_down_in_middle_writing_test", power_down_in_middle_writing_test},
+	{"power_down_in_defragment_test", power_down_in_defragment_test},
 
     { NULL, NULL }
 };

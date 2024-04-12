@@ -24,6 +24,8 @@ static uint8_t *free_map;
 
 #define NUM_OF_SECTORS (mem_size / sector_size)
 
+#define PROTECT_POWER_LOSS
+
 static uint32_t mem_size;
 static uint32_t sector_size;
 
@@ -136,6 +138,11 @@ static int hel_count_empty_sectors(hel_file_id id)
 	return ret;
 }
 
+static hel_ret mem_write_one_helper(uint32_t v_addr, int size, char *in)
+{
+	return mem_driver_write(v_addr, &size, &in, 1);
+}
+
 static hel_ret hel_get_chunks_for_file(int size, chunk_data **chunks_arr, int *chunks_num)
 {
 	hel_file_id new_file_id = 0;
@@ -187,9 +194,78 @@ static hel_ret hel_get_chunks_for_file(int size, chunk_data **chunks_arr, int *c
 	return hel_success;
 }
 
-static hel_ret mem_write_one_helper(uint32_t v_addr, int size, char *in)
+static hel_ret hel_organize_chunks_arr(chunk_data *chunks_arr, int chunks_num)
 {
-	return mem_driver_write(v_addr, &size, &in, 1);
+	hel_ret ret;
+
+	for(int i = 0; i < chunks_num; i++)
+	{
+		hel_chunk first_chunk, curr_chunk;
+		/*
+		 * options:
+		 * 1. all perfect.
+		 * 2. need to update first for defragment, no need to update after as beginning of chunk
+		 * 3. need to update first and create second that not exist.
+		 * 
+		 * what needed to check:
+		 * if after not exist, else if first is fragmented
+		 */
+		bool need_to_update_first = false, need_to_update_first_and_end = false;
+		int empty_sectors = hel_count_empty_sectors(chunks_arr[i].id);
+		int needed_sectors = ROUND_UP_DEV(chunks_arr[i].size + sizeof(hel_chunk), sector_size);
+		ret = mem_driver_read(chunks_arr[i].id * sector_size, sizeof(first_chunk), (char *)&first_chunk);
+		if(ret != hel_success)
+		{
+			return ret;
+		}
+
+		if(CHUNK_SIZE_IN_SECTORS(&first_chunk) != needed_sectors)
+		{
+			curr_chunk = first_chunk;
+			need_to_update_first = true;
+			hel_file_id curr_id= chunks_arr[i].id;
+			while(true)
+			{
+				curr_id += CHUNK_SIZE_IN_SECTORS(&curr_chunk);
+				if(curr_id > chunks_arr[i].id + needed_sectors)
+				{
+					need_to_update_first_and_end = true;
+					break;
+				}
+				
+				if(curr_id == chunks_arr[i].id + needed_sectors)
+				{
+					break;
+				}
+
+				ret = mem_driver_read(curr_id * sector_size, sizeof(curr_id), (char *)&curr_id);
+				if(ret != hel_success)
+				{
+					return ret;
+				}
+
+			}
+
+		}
+
+		if(need_to_update_first_and_end)
+		{
+			// write_end
+			hel_chunk end_chunk = {.is_file_begin = 0, .is_file_end = 0, .next_file_id = 0, .size = empty_sectors - needed_sectors};
+			mem_write_one_helper((chunks_arr[i].id + needed_sectors) * sector_size, sizeof(hel_chunk), (char *)&end_chunk);
+		}
+
+#ifdef PROTECT_POWER_LOSS
+		if(need_to_update_first || need_to_update_first_and_end)
+		{
+			// write_first
+			hel_chunk first_chunk = {.is_file_begin = 0, .is_file_end = 0, .next_file_id = 0, .size = needed_sectors};
+			mem_write_one_helper((chunks_arr[i].id) * sector_size, sizeof(hel_chunk), (char *)&first_chunk);
+		}
+#endif
+	}
+
+	return hel_success;
 }
 
 // size is in-out
@@ -199,32 +275,8 @@ static hel_ret hel_write_to_chunk(int size, hel_file_id id, char *buff, bool is_
 	char *p_chunk_for_mem;
 	char *pp_chunk_for_mem[2];
 	int p_size_for_mem[2];
-	int empty_sectors;
 	hel_ret ret;
 	int needed_sectors = ROUND_UP_DEV(size + sizeof(hel_chunk), sector_size);
-
-	empty_sectors = hel_count_empty_sectors(id);
-
-	// TODO, lots of corner cases here to optimize and for power failure protection
-	if(empty_sectors > needed_sectors)
-	{ // Need to split
-		hel_chunk next_chunk;
-
-		next_chunk.is_file_begin = 0;
-		next_chunk.is_file_end = 0;
-		next_chunk.size = empty_sectors - needed_sectors;\
-
-		ret = mem_write_one_helper((id + needed_sectors) * sector_size, sizeof(next_chunk), (char *)&next_chunk);
-		if(ret != hel_success)
-		{
-			return ret;
-		}
-
-		empty_sectors = needed_sectors;
-	}
-	
-	// TODO there is corner case where there isn't enough sectors because the size is in bytes
-	assert(empty_sectors >= needed_sectors);
 
 	if(next_id != -1)
 	{
@@ -389,6 +441,13 @@ hel_ret hel_create_and_write(char *in, int size, hel_file_id *out_id)
 	ret = hel_get_chunks_for_file(size, &new_chunks_arr, &chunks_num);
 	if(ret != hel_success)
 	{
+		return ret;
+	}
+
+	ret = hel_organize_chunks_arr(new_chunks_arr, chunks_num);
+	if(ret != hel_success)
+	{
+		free(new_chunks_arr);
 		return ret;
 	}
 
