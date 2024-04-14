@@ -957,34 +957,73 @@ void power_down_in_defragment_test()
 		ret = hel_delete(id2);
 		TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 	}
-
 }
 
+void basic_iterator_test()
+{
+	hel_file_id id1, id2, id3, id4;
+	hel_ret ret;
+	hel_chunk file;
+
+	mem_driver_init_test(DEFAULT_MEM_SIZE, DEFAULT_SECTOR_SIZE);
+	
+	ret = hel_format();
+	TEST_ASSERT_(ret == hel_success, "Got error %d", ret);
+
+	ret = hel_create_and_write(MY_STR1, sizeof(MY_STR1), &id1);
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	ret = hel_create_and_write(MY_STR2, sizeof(MY_STR2), &id2);
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	ret = hel_create_and_write(MY_STR3, sizeof(MY_STR3), &id3);
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	ret = hel_delete(id2);
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	id4 = 0;
+	file = (hel_chunk){0};
+	ret = hel_iterate_files(&id4, &file);
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+	TEST_ASSERT_(id1 == id4, "original - %d, got - %d", id1, id4);
+
+	ret = hel_iterate_files(&id4, &file);
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+	TEST_ASSERT_(id3 == id4, "original - %d, got - %d", id3, id4);
+
+	ret = hel_iterate_files(&id4, &file);
+	TEST_ASSERT_(ret == hel_mem_err, "expected error hel_mem_err-%d but got %d", hel_mem_err, ret);
+}
+
+#define ADD_TEST(func) {#func, func},
+
 TEST_LIST = {
-    {"basic-test", basic_test},
-	{"write_too_big_test", write_too_big_test},
-	{"create_too_big_when_file_exist", create_too_big_when_file_exist},
-	{"write_exact_size_test", write_exact_size_test},
-	{"read_out_of_boundaries_test", read_out_of_boundaries_test},
-	{"read_part_of_file_test", read_part_of_file_test},
-	{"write_read_multiple_files", write_read_multiple_files},
-	{"null_params_test", null_params_test},
-	{"delete_in_middle_test", delete_in_middle_test},
-	{"write_big_when_there_hole_test", write_big_when_there_hole_test},
-	{"basic_mem_leak_test", basic_mem_leak_test},
-	{"concatinate_test", concatinate_test},
-	{"fragmented_test", fragmented_test},
-	{"big_id_read_test", big_id_read_test},
-	{"big_id_delete_test", big_id_delete_test},
-	{"ensure_fragmented_file_fully_deleted", ensure_fragmented_file_fully_deleted},
-	{"basic_close_hel_test", basic_close_hel_test},
-	{"basic_init_sign_full_chunks_test", basic_init_sign_full_chunks_test},
-	{"init_with_fragmented_file", init_with_fragmented_file},
-	{"init_with_multiple_free_chunks_test", init_with_multiple_free_chunks_test},
-	{"power_down_in_basic_creation_loop_test", power_down_in_basic_creation_loop_test},
-	{"power_down_in_fragmented_files_creation_loop_test", power_down_in_fragmented_files_creation_loop_test},
-	{"power_down_in_middle_writing_test", power_down_in_middle_writing_test},
-	{"power_down_in_defragment_test", power_down_in_defragment_test},
+    ADD_TEST(basic_test)
+	ADD_TEST(write_too_big_test)
+	ADD_TEST(create_too_big_when_file_exist)
+	ADD_TEST(write_exact_size_test)
+	ADD_TEST(read_out_of_boundaries_test)
+	ADD_TEST(read_part_of_file_test)
+	ADD_TEST(write_read_multiple_files)
+	ADD_TEST(null_params_test)
+	ADD_TEST(delete_in_middle_test)
+	ADD_TEST(write_big_when_there_hole_test)
+	ADD_TEST(basic_mem_leak_test)
+	ADD_TEST(concatinate_test)
+	ADD_TEST(fragmented_test)
+	ADD_TEST(big_id_read_test)
+	ADD_TEST(big_id_delete_test)
+	ADD_TEST(ensure_fragmented_file_fully_deleted)
+	ADD_TEST(basic_close_hel_test)
+	ADD_TEST(basic_init_sign_full_chunks_test)
+	ADD_TEST(init_with_fragmented_file)
+	ADD_TEST(init_with_multiple_free_chunks_test)
+	ADD_TEST(power_down_in_basic_creation_loop_test)
+	ADD_TEST(power_down_in_fragmented_files_creation_loop_test)
+	ADD_TEST(power_down_in_middle_writing_test)
+	ADD_TEST(power_down_in_defragment_test)
+	ADD_TEST(basic_iterator_test)
 
     { NULL, NULL }
 };

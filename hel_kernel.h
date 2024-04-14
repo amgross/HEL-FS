@@ -35,3 +35,5 @@ hel_ret hel_create_and_write(char *in, int size, hel_file_id *out_id);
 hel_ret hel_read(hel_file_id id, char *out, int size);
 
 hel_ret hel_delete(hel_file_id id);
+
+hel_ret hel_iterate_files(hel_file_id *id, hel_chunk  *file);
