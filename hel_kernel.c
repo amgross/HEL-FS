@@ -552,7 +552,6 @@ hel_ret hel_delete(hel_file_id id)
 		return ret;
 	}
 
-
 	if(!del_file.is_file_begin)
 	{
 		return hel_not_file_err;
@@ -572,5 +571,55 @@ hel_ret hel_delete(hel_file_id id)
 		return ret;
 	}
 
+	return hel_success;
+}
+
+hel_ret hel_iterate_files(hel_file_id *id, hel_chunk  *file)
+{
+	hel_ret ret;
+	hel_chunk curr_file;
+	hel_file_id curr_id;
+
+	if(*id >= NUM_OF_SECTORS)
+	{
+		return hel_boundaries_err;
+	}
+
+	if((*id == 0) && (file->size == 0))
+	{
+		ret = mem_driver_read(*id * sector_size, sizeof(curr_file), (char *)&curr_file);
+		if(ret != hel_success)
+		{
+			return ret;
+		}
+
+		if(curr_file.is_file_begin)
+		{
+			*file = curr_file;
+
+			return hel_success;
+		}
+	}
+
+	curr_file = *file;
+	curr_id = *id;
+
+	while(true)
+	{
+		ret = hel_iterator(&curr_file, &curr_id);
+		if(ret != hel_success)
+		{
+			return ret;
+		}
+
+		if(curr_file.is_file_begin)
+		{
+			*id = curr_id;
+			*file = curr_file;
+			return hel_success;
+		}
+	}
+
+	assert(false);
 	return hel_success;
 }
