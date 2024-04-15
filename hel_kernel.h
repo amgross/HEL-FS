@@ -31,7 +31,7 @@ hel_ret hel_close();
 
 hel_ret hel_create_and_write(void *in, int size, hel_file_id *out_id);
 
-hel_ret hel_read(hel_file_id id, void *out, int size);
+hel_ret hel_read(hel_file_id id, void *out, int begin, int size);
 
 hel_ret hel_delete(hel_file_id id);
 
