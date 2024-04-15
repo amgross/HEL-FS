@@ -109,14 +109,14 @@ hel_ret mem_driver_close()
 	return hel_success;
 }
 
-hel_ret mem_driver_write(uint32_t v_addr, int* size, char **in, int buffs_num)
+hel_ret mem_driver_write(uint32_t v_addr, int* size, void **in, int buffs_num)
 {
 	assert(mem_buff != NULL);
 	assert(size[0] >= sizeof(hel_chunk));
 
 	// THis is for writing the metadata in the end atomically
-	char *metadata = in[0];
-	in[0] += sizeof(hel_chunk);
+	uint8_t *metadata = in[0];
+	in[0] = (uint8_t *)in[0] + sizeof(hel_chunk);
 	uint32_t orig_v_addr = v_addr;
 	v_addr += sizeof(hel_chunk);
 	size[0] -= sizeof(hel_chunk);
@@ -144,8 +144,9 @@ hel_ret mem_driver_write(uint32_t v_addr, int* size, char **in, int buffs_num)
 	return hel_success;
 }
 
-hel_ret mem_driver_read(uint32_t v_addr, int size, char *out)
+hel_ret mem_driver_read(uint32_t v_addr, int size, void *_out)
 {
+	uint8_t *out = _out;
 	assert(mem_buff != NULL);
 	assert((v_addr < mem_size) && (mem_size - v_addr >= size));
 

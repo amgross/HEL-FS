@@ -35,7 +35,7 @@ void basic_test()
 {	
 	hel_file_id id;
 	hel_ret ret;
-	char buff[100];
+	uint8_t buff[100];
 	buff[0] = 0;
 
 	mem_driver_init_test(DEFAULT_MEM_SIZE, DEFAULT_SECTOR_SIZE);
@@ -62,7 +62,7 @@ void write_too_big_test()
 {
 	hel_file_id id;
 	hel_ret ret;
-	char buff[DEFAULT_MEM_SIZE * 2];
+	uint8_t buff[DEFAULT_MEM_SIZE * 2];
 
 	mem_driver_init_test(DEFAULT_MEM_SIZE, DEFAULT_SECTOR_SIZE);
 	
@@ -86,7 +86,7 @@ void create_too_big_when_file_exist()
 {
 	hel_file_id id;
 	hel_ret ret;
-	char buff[DEFAULT_MEM_SIZE * 2];
+	uint8_t buff[DEFAULT_MEM_SIZE * 2];
 	buff[0] = 0;
 
 	mem_driver_init_test(DEFAULT_MEM_SIZE, DEFAULT_SECTOR_SIZE);
@@ -105,9 +105,9 @@ void write_exact_size_test()
 {
 	hel_file_id id;
 	hel_ret ret;
-	char buff[DEFAULT_MEM_SIZE];
+	uint8_t buff[DEFAULT_MEM_SIZE];
 	fill_rand_buff((uint8_t *)buff, sizeof(buff));
-	char out_buff[sizeof(buff)];
+	uint8_t out_buff[sizeof(buff)];
 	int size_to_write = DEFAULT_MEM_SIZE - MIN_FILE_SIZE;
 
 	mem_driver_init_test(DEFAULT_MEM_SIZE, DEFAULT_SECTOR_SIZE);
@@ -128,7 +128,7 @@ void read_out_of_boundaries_test()
 {
 	hel_file_id id;
 	hel_ret ret;
-	char buff[100];
+	uint8_t buff[100];
 	buff[0] = 0;
 
 	mem_driver_init_test(DEFAULT_MEM_SIZE, DEFAULT_SECTOR_SIZE);
@@ -147,7 +147,7 @@ void read_part_of_file_test()
 {
 	hel_file_id id;
 	hel_ret ret;
-	char buff[100];
+	uint8_t buff[100];
 	buff[0] = 0;
 	int size_to_read = sizeof(MY_STR1) - 1;
 
@@ -169,7 +169,7 @@ void write_read_multiple_files()
 {
 	hel_file_id id1, id2;
 	hel_ret ret;
-	char buff[100];
+	uint8_t buff[100];
 	buff[0] = 0;
 
 	mem_driver_init_test(DEFAULT_MEM_SIZE, DEFAULT_SECTOR_SIZE);
@@ -214,7 +214,7 @@ void delete_in_middle_test()
 {
 	hel_file_id id1, id2, id3;
 	hel_ret ret;
-	char buff[100];
+	uint8_t buff[100];
 	buff[0] = 0;
 
 	mem_driver_init_test(DEFAULT_MEM_SIZE, DEFAULT_SECTOR_SIZE);
@@ -276,7 +276,7 @@ void write_big_when_there_hole_test()
 {
 	hel_file_id id1, id2, id3;
 	hel_ret ret;
-	char buff[1000];
+	uint8_t buff[1000];
 	buff[0] = 0;
 
 	mem_driver_init_test(DEFAULT_MEM_SIZE, DEFAULT_SECTOR_SIZE);
@@ -337,7 +337,7 @@ void basic_mem_leak_test()
 {
 	hel_file_id id;
 	hel_ret ret;
-	char buff[100];
+	uint8_t buff[100];
 	buff[0] = 0;
 	
 	mem_driver_init_test(DEFAULT_MEM_SIZE, DEFAULT_SECTOR_SIZE);
@@ -367,7 +367,7 @@ void concatinate_test()
 {
 	hel_file_id id1, id2, id3;
 	hel_ret ret;
-	char buff[(DEFAULT_MEM_SIZE / 3) * 2];
+	uint8_t buff[(DEFAULT_MEM_SIZE / 3) * 2];
 
 	mem_driver_init_test(DEFAULT_MEM_SIZE, DEFAULT_SECTOR_SIZE);
 	
@@ -397,8 +397,8 @@ void fragmented_test()
 {
 	hel_file_id id1, id2, id3;
 	hel_ret ret;
-	char buff[(DEFAULT_MEM_SIZE / 3) * 2];
-	char buff_2[sizeof(buff)];
+	uint8_t buff[(DEFAULT_MEM_SIZE / 3) * 2];
+	uint8_t buff_2[sizeof(buff)];
 	fill_rand_buff((uint8_t *)buff, sizeof(buff));
 
 	mem_driver_init_test(DEFAULT_MEM_SIZE, DEFAULT_SECTOR_SIZE);
@@ -431,7 +431,7 @@ void fragmented_test()
 void big_id_read_test()
 {
 	hel_ret ret;
-	char out;
+	uint8_t out;
 
 	mem_driver_init_test(DEFAULT_MEM_SIZE, DEFAULT_SECTOR_SIZE);
 	
@@ -459,8 +459,8 @@ void ensure_fragmented_file_fully_deleted()
 {
 	hel_ret ret;
 	hel_file_id id1, id2, id3;
-	char buff[1000];
-	char write_buff[DEFAULT_SECTOR_SIZE + 1]; // Writing this takes more than 1 sector
+	uint8_t buff[1000];
+	uint8_t write_buff[DEFAULT_SECTOR_SIZE + 1]; // Writing this takes more than 1 sector
 
 	fill_rand_buff((uint8_t *)write_buff, sizeof(write_buff));
 
@@ -530,7 +530,7 @@ void basic_close_hel_test()
 {
 	hel_file_id id;
 	hel_ret ret;
-	char buff[100];
+	uint8_t buff[100];
 	buff[0] = 0;
 
 	mem_driver_init_test(DEFAULT_MEM_SIZE, DEFAULT_SECTOR_SIZE);
@@ -562,7 +562,7 @@ void basic_init_sign_full_chunks_test()
 {
 	hel_file_id id1, id2;
 	hel_ret ret;
-	char buff[100];
+	uint8_t buff[100];
 	buff[0] = 0;
 
 	// Create system with just single sector
@@ -604,8 +604,8 @@ void init_with_fragmented_file()
 {
 	hel_ret ret;
 	hel_file_id id1, id2, id3;
-	char buff[1000];
-	char write_buff[DEFAULT_SECTOR_SIZE + 1]; // Writing this takes more than 1 sector
+	uint8_t buff[1000];
+	uint8_t write_buff[DEFAULT_SECTOR_SIZE + 1]; // Writing this takes more than 1 sector
 
 	fill_rand_buff((uint8_t *)write_buff, sizeof(write_buff));
 
@@ -705,7 +705,7 @@ void power_down_in_basic_creation_loop_test()
 {
 	hel_ret ret;
 	int round = 0;
-	char buff[100];
+	uint8_t buff[100];
 
 	mem_driver_init_test(DEFAULT_MEM_SIZE, DEFAULT_SECTOR_SIZE);
 	
@@ -763,8 +763,8 @@ void power_down_in_fragmented_files_creation_loop_test()
 	hel_ret ret;
 	hel_file_id id1, id2;
 	int round = 0;
-	char buff[DEFAULT_SECTOR_SIZE + 1];
-	char buff_out[sizeof(buff)];
+	uint8_t buff[DEFAULT_SECTOR_SIZE + 1];
+	uint8_t buff_out[sizeof(buff)];
 
 	mem_driver_init_test(DEFAULT_SECTOR_SIZE * 3, DEFAULT_SECTOR_SIZE);
 	
@@ -833,7 +833,7 @@ void power_down_in_middle_writing_test()
 {
 	hel_ret ret;
 	int round = 0;
-	char buff[100];
+	uint8_t buff[100];
 
 	mem_driver_init_test(DEFAULT_MEM_SIZE, DEFAULT_SECTOR_SIZE);
 	
@@ -891,8 +891,8 @@ void power_down_in_defragment_test()
 	hel_ret ret;
 	hel_file_id id1, id2;
 	int round = 0;
-	char buff[DEFAULT_SECTOR_SIZE + 4];
-	char buff_out[sizeof(buff)];
+	uint8_t buff[DEFAULT_SECTOR_SIZE + 4];
+	uint8_t buff_out[sizeof(buff)];
 
 	mem_driver_init_test(DEFAULT_SECTOR_SIZE * 3, DEFAULT_SECTOR_SIZE);
 	
