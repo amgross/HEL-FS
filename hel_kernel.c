@@ -26,6 +26,8 @@ static uint8_t *free_map;
 
 #define PROTECT_POWER_LOSS
 
+#define HEL_MIN(x, y) ((x > y) ? y: x)
+
 static uint32_t mem_size;
 static uint32_t sector_size;
 
@@ -482,7 +484,7 @@ hel_ret hel_create_and_write(void *_in, int size, hel_file_id *out_id)
 	return hel_success;
 }
 
-hel_ret hel_read(hel_file_id id, void *_out, int size)
+hel_ret hel_read(hel_file_id id, void *_out, int begin, int size)
 {
 	uint8_t *out = _out;
 	hel_chunk read_file;
@@ -504,15 +506,19 @@ hel_ret hel_read(hel_file_id id, void *_out, int size)
 		return hel_not_file_err;
 	}
 
-	// TODO need much more checks to ensure we are not out of boundaries
 	while(size != 0)
 	{
-		int read_len = (size > CHUNK_DATA_BYTES(&read_file)) ? 
-		CHUNK_DATA_BYTES(&read_file): size;
-		ret = mem_driver_read((id * sector_size) + sizeof(read_file), read_len, out);
-		if(ret != hel_success)
+		int begin_offset = HEL_MIN(CHUNK_DATA_BYTES(&read_file), begin);
+		begin -= begin_offset;
+		int read_len = (size > CHUNK_DATA_BYTES(&read_file) - begin_offset) ? CHUNK_DATA_BYTES(&read_file) - begin_offset: size;
+
+		if(read_len != 0)
 		{
-			return ret;
+			ret = mem_driver_read((id * sector_size) + sizeof(read_file) + begin_offset, read_len, out);
+			if(ret != hel_success)
+			{
+				return ret;
+			}
 		}
 
 		out += read_len;

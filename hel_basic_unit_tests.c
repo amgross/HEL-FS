@@ -46,7 +46,7 @@ void basic_test()
 	ret = hel_create_and_write(MY_STR1, sizeof(MY_STR1), &id);
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 	
-	ret = hel_read(id, buff, sizeof(MY_STR1));
+	ret = hel_read(id, buff, 0, sizeof(MY_STR1));
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
 	TEST_ASSERT(memcmp(buff, MY_STR1, sizeof(MY_STR1)) == 0);
@@ -54,7 +54,7 @@ void basic_test()
 	ret = hel_delete(id);
 	TEST_ASSERT_(ret == hel_success, "Got error %d", ret);
 
-	ret = hel_read(id, buff, sizeof(MY_STR2));
+	ret = hel_read(id, buff, 0, sizeof(MY_STR2));
 	TEST_ASSERT_(ret == hel_not_file_err, "expected error hel_not_file_err-%d but got %d", hel_not_file_err, ret);
 }
 
@@ -118,7 +118,7 @@ void write_exact_size_test()
 	ret = hel_create_and_write(buff, size_to_write, &id);
 	TEST_ASSERT_(ret == hel_success, "got error - %d", ret);
 
-	ret = hel_read(id, out_buff, size_to_write);
+	ret = hel_read(id, out_buff, 0, size_to_write);
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
 	TEST_ASSERT(memcmp(buff, out_buff, size_to_write) == 0);
@@ -139,7 +139,7 @@ void read_out_of_boundaries_test()
 	ret = hel_create_and_write(MY_STR1, sizeof(MY_STR1), &id);
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
-	ret = hel_read(id, buff, sizeof(MY_STR1) + 1);
+	ret = hel_read(id, buff, 0, sizeof(MY_STR1) + 1);
 	TEST_ASSERT_(ret == hel_boundaries_err, "expected error hel_boundaries_err-%d but got %d", hel_boundaries_err, ret);
 }
 
@@ -159,7 +159,7 @@ void read_part_of_file_test()
 	ret = hel_create_and_write(MY_STR1, sizeof(MY_STR1), &id);
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
-	ret = hel_read(id, buff, size_to_read);
+	ret = hel_read(id, buff, 0, size_to_read);
 	TEST_ASSERT_(ret == hel_success, "Got error %d", ret);
 
 	TEST_ASSERT(memcmp(buff, MY_STR1, size_to_read) == 0);
@@ -183,15 +183,15 @@ void write_read_multiple_files()
 	ret = hel_create_and_write(MY_STR2, sizeof(MY_STR2), &id2);
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
-	ret = hel_read(id1, buff, sizeof(MY_STR1));
+	ret = hel_read(id1, buff, 0, sizeof(MY_STR1));
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
 	TEST_ASSERT(memcmp(buff, MY_STR1, sizeof(MY_STR1)) == 0);
 
-	ret = hel_read(id2, buff, sizeof(MY_STR2) + 1);
+	ret = hel_read(id2, buff, 0, sizeof(MY_STR2) + 1);
 	TEST_ASSERT_(ret == hel_boundaries_err, "expected error hel_boundaries_err-%d but got %d", hel_boundaries_err, ret);
 
-	ret = hel_read(id2, buff, sizeof(MY_STR2));
+	ret = hel_read(id2, buff, 0, sizeof(MY_STR2));
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
 	TEST_ASSERT(memcmp(buff, MY_STR2, sizeof(MY_STR2)) == 0);
@@ -231,17 +231,17 @@ void delete_in_middle_test()
 	ret = hel_create_and_write(MY_STR3, sizeof(MY_STR3), &id3);
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
-	ret = hel_read(id1, buff, sizeof(MY_STR1));
+	ret = hel_read(id1, buff, 0, sizeof(MY_STR1));
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
 	TEST_ASSERT(memcmp(buff, MY_STR1, sizeof(MY_STR1)) == 0);
 
-	ret = hel_read(id2, buff, sizeof(MY_STR2));
+	ret = hel_read(id2, buff, 0, sizeof(MY_STR2));
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
 	TEST_ASSERT(memcmp(buff, MY_STR2, sizeof(MY_STR2)) == 0);
 
-	ret = hel_read(id3, buff, sizeof(MY_STR3));
+	ret = hel_read(id3, buff, 0, sizeof(MY_STR3));
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
 	TEST_ASSERT(memcmp(buff, MY_STR3, sizeof(MY_STR3)) == 0);
@@ -249,23 +249,23 @@ void delete_in_middle_test()
 	ret = hel_delete(id2);
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
-	ret = hel_read(id2, buff, sizeof(MY_STR2));
+	ret = hel_read(id2, buff, 0, sizeof(MY_STR2));
 	TEST_ASSERT_(ret == hel_not_file_err, "expected error hel_not_file_err-%d but got %d", hel_not_file_err, ret);
 
 	ret = hel_create_and_write(MY_STR3, sizeof(MY_STR3), &id2);
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
-	ret = hel_read(id1, buff, sizeof(MY_STR1));
+	ret = hel_read(id1, buff, 0, sizeof(MY_STR1));
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
 	TEST_ASSERT(memcmp(buff, MY_STR1, sizeof(MY_STR1)) == 0);
 
-	ret = hel_read(id2, buff, sizeof(MY_STR3));
+	ret = hel_read(id2, buff, 0, sizeof(MY_STR3));
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
 	TEST_ASSERT(memcmp(buff, MY_STR3, sizeof(MY_STR3)) == 0);
 
-	ret = hel_read(id3, buff, sizeof(MY_STR3));
+	ret = hel_read(id3, buff, 0, sizeof(MY_STR3));
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
 	TEST_ASSERT(memcmp(buff, MY_STR3, sizeof(MY_STR3)) == 0);
@@ -293,17 +293,17 @@ void write_big_when_there_hole_test()
 	ret = hel_create_and_write(MY_STR3, sizeof(MY_STR3), &id3);
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
-	ret = hel_read(id1, buff, sizeof(MY_STR1));
+	ret = hel_read(id1, buff, 0, sizeof(MY_STR1));
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
 	TEST_ASSERT(memcmp(buff, MY_STR1, sizeof(MY_STR1)) == 0);
 
-	ret = hel_read(id2, buff, sizeof(MY_STR2));
+	ret = hel_read(id2, buff, 0, sizeof(MY_STR2));
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
 	TEST_ASSERT(memcmp(buff, MY_STR2, sizeof(MY_STR2)) == 0);
 
-	ret = hel_read(id3, buff, sizeof(MY_STR3));
+	ret = hel_read(id3, buff, 0, sizeof(MY_STR3));
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
 	TEST_ASSERT(memcmp(buff, MY_STR3, sizeof(MY_STR3)) == 0);
@@ -311,23 +311,23 @@ void write_big_when_there_hole_test()
 	ret = hel_delete(id2);
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
-	ret = hel_read(id2, buff, sizeof(MY_STR2));
+	ret = hel_read(id2, buff, 0, sizeof(MY_STR2));
 	TEST_ASSERT_(ret == hel_not_file_err, "expected error hel_not_file_err-%d but got %d", hel_not_file_err, ret);
 
 	ret = hel_create_and_write(BIG_STR1, sizeof(BIG_STR1), &id2);
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
-	ret = hel_read(id1, buff, sizeof(MY_STR1));
+	ret = hel_read(id1, buff, 0, sizeof(MY_STR1));
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
 	TEST_ASSERT(memcmp(buff, MY_STR1, sizeof(MY_STR1)) == 0);
 
-	ret = hel_read(id2, buff, sizeof(BIG_STR1));
+	ret = hel_read(id2, buff, 0, sizeof(BIG_STR1));
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
 	TEST_ASSERT(memcmp(buff, BIG_STR1, sizeof(BIG_STR1)) == 0);
 
-	ret = hel_read(id3, buff, sizeof(MY_STR3));
+	ret = hel_read(id3, buff, 0, sizeof(MY_STR3));
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
 	TEST_ASSERT(memcmp(buff, MY_STR3, sizeof(MY_STR3)) == 0);
@@ -350,7 +350,7 @@ void basic_mem_leak_test()
 		ret = hel_create_and_write(MY_STR1, sizeof(MY_STR1), &id);
 		TEST_ASSERT_(ret == hel_success, "got error %d, cycle %d", ret, i);
 		
-		ret = hel_read(id, buff, sizeof(MY_STR1));
+		ret = hel_read(id, buff, 0, sizeof(MY_STR1));
 		TEST_ASSERT_(ret == hel_success, "got error %d, cycle %d", ret, i);
 
 		TEST_ASSERT(memcmp(buff, MY_STR1, sizeof(MY_STR1)) == 0);
@@ -359,7 +359,7 @@ void basic_mem_leak_test()
 		TEST_ASSERT_(ret == hel_success, "Got error %d, cycle %d", ret, i);
 	}
 
-	ret = hel_read(id, buff, sizeof(MY_STR2));
+	ret = hel_read(id, buff, 0, sizeof(MY_STR2));
 	TEST_ASSERT_(ret == hel_not_file_err, "expected error hel_not_file_err-%d but got %d", hel_not_file_err, ret);
 }
 
@@ -421,7 +421,7 @@ void fragmented_test()
 	ret = hel_create_and_write(buff, sizeof(buff), &id3);
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
-	ret = hel_read(id3, buff_2, sizeof(buff_2));
+	ret = hel_read(id3, buff_2, 0, sizeof(buff_2));
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
 	TEST_ASSERT(memcmp(buff_2, buff, sizeof(buff_2)) == 0);
@@ -438,7 +438,7 @@ void big_id_read_test()
 	ret = hel_format();
 	TEST_ASSERT_(ret == hel_success, "Got error %d", ret);
 
-	ret = hel_read(DEFAULT_MEM_SIZE, &out, 1);
+	ret = hel_read(DEFAULT_MEM_SIZE, &out, 0, 1);
 	TEST_ASSERT_(ret == hel_boundaries_err, "expected error hel_boundaries_err-%d but got %d", hel_boundaries_err, ret);
 }
 
@@ -488,15 +488,15 @@ void ensure_fragmented_file_fully_deleted()
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
 	// Sanity checks that things are as expected
-	ret = hel_read(id2, buff, sizeof(MY_STR2));
+	ret = hel_read(id2, buff, 0, sizeof(MY_STR2));
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
 	TEST_ASSERT(memcmp(buff, MY_STR2, sizeof(MY_STR2)) == 0);
 
-	ret = hel_read(id1, buff, sizeof(MY_STR2));
+	ret = hel_read(id1, buff, 0, sizeof(MY_STR2));
 	TEST_ASSERT_(ret == hel_not_file_err, "expected error hel_not_file_err-%d but got %d", hel_not_file_err, ret);
 
-	ret = hel_read(id3, buff, sizeof(MY_STR2));
+	ret = hel_read(id3, buff, 0, sizeof(MY_STR2));
 	TEST_ASSERT_(ret == hel_not_file_err, "expected error hel_not_file_err-%d but got %d", hel_not_file_err, ret);
 
 	// Create a fragmanted file
@@ -504,7 +504,7 @@ void ensure_fragmented_file_fully_deleted()
 	TEST_ASSERT_(ret == hel_success, "Got error %d", ret);
 
 	// Sanity check that writing the fragmented file succeeded
-	ret = hel_read(id1, buff, sizeof(write_buff));
+	ret = hel_read(id1, buff, 0, sizeof(write_buff));
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
 	TEST_ASSERT(memcmp(buff, write_buff, sizeof(write_buff)) == 0);
@@ -520,7 +520,7 @@ void ensure_fragmented_file_fully_deleted()
 	TEST_ASSERT_(ret == hel_success, "Got error %d", ret);
 
 	// Sanity check that writing the fragmented file succeeded
-	ret = hel_read(id1, buff, sizeof(write_buff));
+	ret = hel_read(id1, buff, 0, sizeof(write_buff));
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
 	TEST_ASSERT(memcmp(buff, write_buff, sizeof(write_buff)) == 0);
@@ -541,7 +541,7 @@ void basic_close_hel_test()
 	ret = hel_create_and_write(MY_STR1, sizeof(MY_STR1), &id);
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 	
-	ret = hel_read(id, buff, sizeof(MY_STR1));
+	ret = hel_read(id, buff, 0, sizeof(MY_STR1));
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
 	TEST_ASSERT(memcmp(buff, MY_STR1, sizeof(MY_STR1)) == 0);
@@ -552,7 +552,7 @@ void basic_close_hel_test()
 	ret = hel_init();
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
-	ret = hel_read(id, buff, sizeof(MY_STR1));
+	ret = hel_read(id, buff, 0, sizeof(MY_STR1));
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
 	TEST_ASSERT(memcmp(buff, MY_STR1, sizeof(MY_STR1)) == 0);
@@ -575,7 +575,7 @@ void basic_init_sign_full_chunks_test()
 	ret = hel_create_and_write(MY_STR1, sizeof(MY_STR1), &id1);
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 	
-	ret = hel_read(id1, buff, sizeof(MY_STR1));
+	ret = hel_read(id1, buff, 0, sizeof(MY_STR1));
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
 	TEST_ASSERT(memcmp(buff, MY_STR1, sizeof(MY_STR1)) == 0);
@@ -595,7 +595,7 @@ void basic_init_sign_full_chunks_test()
 	TEST_ASSERT_(ret == hel_mem_err, "expected error hel_mem_err-%d but got %d", hel_mem_err, ret);
 
 
-	ret = hel_read(id1, buff, sizeof(MY_STR1));
+	ret = hel_read(id1, buff, 0, sizeof(MY_STR1));
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
 	TEST_ASSERT(memcmp(buff, MY_STR1, sizeof(MY_STR1)) == 0);
@@ -633,15 +633,15 @@ void init_with_fragmented_file()
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
 	// Sanity checks that things are as expected
-	ret = hel_read(id2, buff, sizeof(MY_STR2));
+	ret = hel_read(id2, buff, 0, sizeof(MY_STR2));
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
 	TEST_ASSERT(memcmp(buff, MY_STR2, sizeof(MY_STR2)) == 0);
 
-	ret = hel_read(id1, buff, sizeof(MY_STR2));
+	ret = hel_read(id1, buff, 0, sizeof(MY_STR2));
 	TEST_ASSERT_(ret == hel_not_file_err, "expected error hel_not_file_err-%d but got %d", hel_not_file_err, ret);
 
-	ret = hel_read(id3, buff, sizeof(MY_STR2));
+	ret = hel_read(id3, buff, 0, sizeof(MY_STR2));
 	TEST_ASSERT_(ret == hel_not_file_err, "expected error hel_not_file_err-%d but got %d", hel_not_file_err, ret);
 
 	// Create a fragmanted file
@@ -649,7 +649,7 @@ void init_with_fragmented_file()
 	TEST_ASSERT_(ret == hel_success, "Got error %d", ret);
 
 	// Sanity check that writing the fragmented file succeeded
-	ret = hel_read(id1, buff, sizeof(write_buff));
+	ret = hel_read(id1, buff, 0, sizeof(write_buff));
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
 	TEST_ASSERT(memcmp(buff, write_buff, sizeof(write_buff)) == 0);
@@ -667,7 +667,7 @@ void init_with_fragmented_file()
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
 	// Sanity check that the fragmented file still exist
-	ret = hel_read(id1, buff, sizeof(write_buff));
+	ret = hel_read(id1, buff, 0, sizeof(write_buff));
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
 	TEST_ASSERT(memcmp(buff, write_buff, sizeof(write_buff)) == 0);
@@ -745,7 +745,7 @@ void power_down_in_basic_creation_loop_test()
 		}
 
 		// Sanity check that the file exist
-		ret = hel_read(g_id1, buff, sizeof(MY_STR1));
+		ret = hel_read(g_id1, buff, 0, sizeof(MY_STR1));
 		TEST_ASSERT_(ret == hel_success, "got error %d, round %d", ret, round);
 
 		TEST_ASSERT(memcmp(buff, MY_STR1, sizeof(MY_STR1)) == 0);
@@ -817,7 +817,7 @@ void power_down_in_fragmented_files_creation_loop_test()
 		}
 
 		// Sanity check that the file exist
-		ret = hel_read(g_id1, buff_out, sizeof(buff));
+		ret = hel_read(g_id1, buff_out, 0, sizeof(buff));
 		TEST_ASSERT_(ret == hel_success, "got error %d, round %d", ret, round);
 
 		TEST_ASSERT(memcmp(buff, buff_out, sizeof(buff)) == 0);
@@ -873,7 +873,7 @@ void power_down_in_middle_writing_test()
 		}
 
 		// Sanity check that the file exist
-		ret = hel_read(g_id1, buff, sizeof(MY_STR1));
+		ret = hel_read(g_id1, buff, 0, sizeof(MY_STR1));
 		TEST_ASSERT_(ret == hel_success, "got error %d, round %d", ret, round);
 
 		TEST_ASSERT(memcmp(buff, MY_STR1, sizeof(MY_STR1)) == 0);
@@ -934,7 +934,7 @@ void power_down_in_defragment_test()
 		}
 
 		// Sanity check that the file exist
-		ret = hel_read(g_id1, buff_out, sizeof(buff));
+		ret = hel_read(g_id1, buff_out, 0, sizeof(buff));
 		TEST_ASSERT_(ret == hel_success, "got error %d, round %d", ret, round);
 
 		TEST_ASSERT(memcmp(buff, buff_out, sizeof(buff)) == 0);
@@ -996,6 +996,56 @@ void basic_iterator_test()
 	TEST_ASSERT_(ret == hel_mem_err, "expected error hel_mem_err-%d but got %d", hel_mem_err, ret);
 }
 
+void read_in_middle_test()
+{
+	hel_file_id id1, id2;
+	hel_ret ret;
+	uint8_t buff[1000];
+	buff[0] = 0;
+
+	mem_driver_init_test(DEFAULT_MEM_SIZE, DEFAULT_SECTOR_SIZE);
+	
+	ret = hel_format();
+	TEST_ASSERT_(ret == hel_success, "Got error %d", ret);
+
+	ret = hel_create_and_write(MY_STR1, sizeof(MY_STR1), &id1);
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	ret = hel_create_and_write(MY_STR2, sizeof(MY_STR2), &id2);
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	ret = hel_delete(id1);
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	ret = hel_create_and_write(BIG_STR1, sizeof(BIG_STR1), &id1);
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	ret = hel_read(id1, buff, 0, sizeof(BIG_STR1));
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	TEST_ASSERT(memcmp(buff, BIG_STR1, sizeof(BIG_STR1)) == 0);
+
+	ret = hel_read(id2, buff, 0, sizeof(MY_STR2));
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	TEST_ASSERT(memcmp(buff, MY_STR2, sizeof(MY_STR2)) == 0);
+
+	ret = hel_read(id1, buff, 1, sizeof(BIG_STR1) - 1);
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	TEST_ASSERT(memcmp(buff, BIG_STR1 + 1, sizeof(BIG_STR1) - 1) == 0);
+
+	for(int i = 0; i < 20; i ++)
+	{
+		int offset = rand() % sizeof(BIG_STR1);
+		int size = rand() % (sizeof(BIG_STR1) - offset);
+		ret = hel_read(id1, buff, offset, size);
+		TEST_ASSERT_(ret == hel_success, "got error %d, round %d, begin %d, size %d, string size %ld", ret, i, offset, size, sizeof(BIG_STR1));
+
+		TEST_ASSERT_(memcmp(buff, BIG_STR1 + offset, size) == 0, "compare failed round %d", i);
+	}
+}
+
 #define ADD_TEST(func) {#func, func},
 
 TEST_LIST = {
@@ -1024,6 +1074,7 @@ TEST_LIST = {
 	ADD_TEST(power_down_in_middle_writing_test)
 	ADD_TEST(power_down_in_defragment_test)
 	ADD_TEST(basic_iterator_test)
+	ADD_TEST(read_in_middle_test)
 
     { NULL, NULL }
 };
