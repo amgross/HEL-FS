@@ -18,7 +18,6 @@ typedef struct
 	uint16_t is_file_begin : 1;
 	uint16_t is_file_end : 1;
 	uint16_t next_file_id;
-	char data[];
 }hel_chunk;
 #pragma pack(pop)
 
@@ -30,9 +29,9 @@ hel_ret hel_init();
 
 hel_ret hel_close();
 
-hel_ret hel_create_and_write(char *in, int size, hel_file_id *out_id);
+hel_ret hel_create_and_write(void *in, int size, hel_file_id *out_id);
 
-hel_ret hel_read(hel_file_id id, char *out, int size);
+hel_ret hel_read(hel_file_id id, void *out, int size);
 
 hel_ret hel_delete(hel_file_id id);
 

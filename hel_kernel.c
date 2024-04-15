@@ -56,7 +56,7 @@ static hel_ret hel_iterator(hel_chunk *curr_file, hel_file_id *id)
 		}
 	}
 
-	ret = mem_driver_read(next_id * sector_size, sizeof(*curr_file), (char *)curr_file);
+	ret = mem_driver_read(next_id * sector_size, sizeof(*curr_file), curr_file);
 	if(ret != hel_success)
 	{
 		return ret;
@@ -108,7 +108,7 @@ static hel_ret hel_sign_area(hel_chunk *_chunk, hel_file_id start_sector_id, boo
 
 		start_sector_id = chunk.next_file_id;
 
-		ret = mem_driver_read(chunk.next_file_id * sector_size, sizeof(chunk), (char *)&chunk);
+		ret = mem_driver_read(chunk.next_file_id * sector_size, sizeof(chunk), &chunk);
 		if(ret != hel_success)
 		{
 			// TODO how toheal from this?
@@ -138,7 +138,7 @@ static int hel_count_empty_sectors(hel_file_id id)
 	return ret;
 }
 
-static hel_ret mem_write_one_helper(uint32_t v_addr, int size, char *in)
+static hel_ret mem_write_one_helper(uint32_t v_addr, int size, void *in)
 {
 	return mem_driver_write(v_addr, &size, &in, 1);
 }
@@ -213,7 +213,7 @@ static hel_ret hel_organize_chunks_arr(chunk_data *chunks_arr, int chunks_num)
 		bool need_to_update_first = false, need_to_update_first_and_end = false;
 		int empty_sectors = hel_count_empty_sectors(chunks_arr[i].id);
 		int needed_sectors = ROUND_UP_DEV(chunks_arr[i].size + sizeof(hel_chunk), sector_size);
-		ret = mem_driver_read(chunks_arr[i].id * sector_size, sizeof(first_chunk), (char *)&first_chunk);
+		ret = mem_driver_read(chunks_arr[i].id * sector_size, sizeof(first_chunk), &first_chunk);
 		if(ret != hel_success)
 		{
 			return ret;
@@ -238,7 +238,7 @@ static hel_ret hel_organize_chunks_arr(chunk_data *chunks_arr, int chunks_num)
 					break;
 				}
 
-				ret = mem_driver_read(curr_id * sector_size, sizeof(curr_id), (char *)&curr_id);
+				ret = mem_driver_read(curr_id * sector_size, sizeof(curr_id), &curr_id);
 				if(ret != hel_success)
 				{
 					return ret;
@@ -252,7 +252,7 @@ static hel_ret hel_organize_chunks_arr(chunk_data *chunks_arr, int chunks_num)
 		{
 			// write_end
 			hel_chunk end_chunk = {.is_file_begin = 0, .is_file_end = 0, .next_file_id = 0, .size = empty_sectors - needed_sectors};
-			mem_write_one_helper((chunks_arr[i].id + needed_sectors) * sector_size, sizeof(hel_chunk), (char *)&end_chunk);
+			mem_write_one_helper((chunks_arr[i].id + needed_sectors) * sector_size, sizeof(hel_chunk), &end_chunk);
 		}
 
 #ifdef PROTECT_POWER_LOSS
@@ -260,7 +260,7 @@ static hel_ret hel_organize_chunks_arr(chunk_data *chunks_arr, int chunks_num)
 		{
 			// write_first
 			hel_chunk first_chunk = {.is_file_begin = 0, .is_file_end = 0, .next_file_id = 0, .size = needed_sectors};
-			mem_write_one_helper((chunks_arr[i].id) * sector_size, sizeof(hel_chunk), (char *)&first_chunk);
+			mem_write_one_helper((chunks_arr[i].id) * sector_size, sizeof(hel_chunk), &first_chunk);
 		}
 #endif
 	}
@@ -269,11 +269,11 @@ static hel_ret hel_organize_chunks_arr(chunk_data *chunks_arr, int chunks_num)
 }
 
 // size is in-out
-static hel_ret hel_write_to_chunk(int size, hel_file_id id, char *buff, bool is_first, hel_file_id next_id)
+static hel_ret hel_write_to_chunk(int size, hel_file_id id, void *buff, bool is_first, hel_file_id next_id)
 {
 	hel_chunk new_file;
-	char *p_chunk_for_mem;
-	char *pp_chunk_for_mem[2];
+	void *p_chunk_for_mem;
+	void *pp_chunk_for_mem[2];
 	int p_size_for_mem[2];
 	hel_ret ret;
 	int needed_sectors = ROUND_UP_DEV(size + sizeof(hel_chunk), sector_size);
@@ -310,7 +310,7 @@ static hel_ret hel_write_to_chunk(int size, hel_file_id id, char *buff, bool is_
 		return ret;
 	}
 
-	p_chunk_for_mem = (char *)&new_file;
+	p_chunk_for_mem = &new_file;
 	pp_chunk_for_mem[0] = p_chunk_for_mem;
 	p_size_for_mem[0] = sizeof(new_file);
 
@@ -347,7 +347,7 @@ hel_ret hel_init()
 
 	while((ret = hel_find_empty_place(curr_id, &curr_id)) == hel_success)
 	{ 
-		ret = mem_driver_read(curr_id * sector_size, sizeof(check_chunk), (char *)&check_chunk);
+		ret = mem_driver_read(curr_id * sector_size, sizeof(check_chunk), &check_chunk);
 		if(ret != hel_success)
 		{
 			return ret;
@@ -410,7 +410,7 @@ hel_ret hel_format()
 	first_chunk.is_file_begin = 0;
 	first_chunk.is_file_end = 0;
 
-	ret = mem_write_one_helper(0, sizeof(first_chunk), (char *)&first_chunk);
+	ret = mem_write_one_helper(0, sizeof(first_chunk), &first_chunk);
 	if(ret != hel_success)
 	{
 		return ret;
@@ -427,8 +427,9 @@ void print_file(hel_chunk *file, hel_file_id id)
 	printf("size %d, is file begin %d, is file end %d, id %d\n", file->size, file->is_file_begin, file->is_file_end, id);
 }
 
-hel_ret hel_create_and_write(char *in, int size, hel_file_id *out_id)
+hel_ret hel_create_and_write(void *_in, int size, hel_file_id *out_id)
 {
+	uint8_t *in = _in;
 	chunk_data *new_chunks_arr;
 	int chunks_num;
 	hel_ret ret;
@@ -481,8 +482,9 @@ hel_ret hel_create_and_write(char *in, int size, hel_file_id *out_id)
 	return hel_success;
 }
 
-hel_ret hel_read(hel_file_id id, char *out, int size)
+hel_ret hel_read(hel_file_id id, void *_out, int size)
 {
+	uint8_t *out = _out;
 	hel_chunk read_file;
 	hel_ret ret;
 
@@ -491,7 +493,7 @@ hel_ret hel_read(hel_file_id id, char *out, int size)
 		return hel_boundaries_err;
 	}
 
-	ret = mem_driver_read(id * sector_size, sizeof(read_file), (char *)&read_file);
+	ret = mem_driver_read(id * sector_size, sizeof(read_file), &read_file);
 	if(ret != hel_success)
 	{
 		return ret;
@@ -525,7 +527,7 @@ hel_ret hel_read(hel_file_id id, char *out, int size)
 		else
 		{
 			id = read_file.next_file_id;
-			ret = mem_driver_read(id * sector_size, sizeof(read_file), (char *)&read_file);
+			ret = mem_driver_read(id * sector_size, sizeof(read_file), &read_file);
 			if(ret != hel_success)
 			{
 				return ret;
@@ -546,7 +548,7 @@ hel_ret hel_delete(hel_file_id id)
 		return hel_boundaries_err;
 	}
 
-	ret = mem_driver_read(id * sector_size, sizeof(del_file), (char *)&del_file);
+	ret = mem_driver_read(id * sector_size, sizeof(del_file), &del_file);
 	if(ret != hel_success)
 	{
 		return ret;
@@ -565,7 +567,7 @@ hel_ret hel_delete(hel_file_id id)
 		return ret;
 	}
 
-	ret = mem_write_one_helper(id * sector_size, sizeof(del_file), (char *)&del_file);
+	ret = mem_write_one_helper(id * sector_size, sizeof(del_file), &del_file);
 	if(ret != hel_success)
 	{
 		return ret;
@@ -587,7 +589,7 @@ hel_ret hel_iterate_files(hel_file_id *id, hel_chunk  *file)
 
 	if((*id == 0) && (file->size == 0))
 	{
-		ret = mem_driver_read(*id * sector_size, sizeof(curr_file), (char *)&curr_file);
+		ret = mem_driver_read(*id * sector_size, sizeof(curr_file), &curr_file);
 		if(ret != hel_success)
 		{
 			return ret;
