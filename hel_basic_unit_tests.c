@@ -711,9 +711,6 @@ void power_down_in_basic_creation_loop_test()
 	
 	ret = hel_format();
 	TEST_ASSERT_(ret == hel_success, "Got error %d", ret);
-	
-	ret = hel_init();
-	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
 	power_down = PD_BEFORE_OERATION_RANDOMLY;
 	power_down_prob = 20;
@@ -770,10 +767,6 @@ void power_down_in_fragmented_files_creation_loop_test()
 	
 	ret = hel_format();
 	TEST_ASSERT_(ret == hel_success, "Got error %d", ret);
-	
-	ret = hel_init();
-	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
-
 
 	ret = hel_create_and_write(MY_STR1, sizeof(MY_STR1), &id1);
 	TEST_ASSERT_(ret == hel_success, "Got error %d", ret);
@@ -839,9 +832,6 @@ void power_down_in_middle_writing_test()
 	
 	ret = hel_format();
 	TEST_ASSERT_(ret == hel_success, "Got error %d", ret);
-	
-	ret = hel_init();
-	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
 	power_down = PD_IN_MIDDLE_RANDOMLY;
 	power_down_prob = 20;
@@ -898,9 +888,6 @@ void power_down_in_defragment_test()
 	
 	ret = hel_format();
 	TEST_ASSERT_(ret == hel_success, "Got error %d", ret);
-	
-	ret = hel_init();
-	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
 	power_down_prob = 20;
 	g_id1 = -1;
