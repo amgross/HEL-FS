@@ -969,9 +969,8 @@ void basic_iterator_test()
 	ret = hel_delete(id2);
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
-	id4 = 0;
-	file = (hel_chunk){0};
-	ret = hel_iterate_files(&id4, &file);
+	
+	ret = hel_get_first_file(&id4, &file);
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 	TEST_ASSERT_(id1 == id4, "original - %d, got - %d", id1, id4);
 

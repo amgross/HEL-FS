@@ -14,9 +14,9 @@
 
 static uint8_t *free_map;
 
-#define CHUNK_SIZE_IN_SECTORS(chunk) (!(chunk)->is_file_end ? (chunk)->size : ROUND_UP_DEV((chunk)->size + sizeof(hel_chunk), sector_size))
+#define CHUNK_SIZE_IN_SECTORS(chunk) (!(chunk)->is_file_end ? (chunk)->type.not_end.sectors_size : ROUND_UP_DEV((chunk)->type.end.bytes_size + sizeof(hel_chunk), sector_size))
 #define CHUNK_SIZE_IN_BYTES(chunk) ((CHUNK_SIZE_IN_SECTORS(chunk) * sector_size) - sizeof(hel_chunk))
-#define CHUNK_DATA_BYTES(chunk) ((chunk)->is_file_end ? (chunk)->size : CHUNK_SIZE_IN_BYTES(chunk))
+#define CHUNK_DATA_BYTES(chunk) ((chunk)->is_file_end ? (chunk)->type.end.bytes_size : CHUNK_SIZE_IN_BYTES(chunk))
 
 #define SET_FREE_BIT(id) (free_map[(id) / 8] |= (1 << ((id) % 8)))
 #define UNSET_FREE_BIT(id) (free_map[(id) / 8] &= ~(1 << ((id) % 8)))
@@ -62,6 +62,7 @@ static hel_ret hel_iterator(hel_chunk *curr_chunk, hel_file_id *id)
 
 	next_id = *id + CHUNK_SIZE_IN_SECTORS(curr_chunk);
 	assert(next_id <= NUM_OF_SECTORS);
+	assert(next_id > *id);
 
 	if(next_id >= NUM_OF_SECTORS)
 	{
@@ -118,9 +119,9 @@ static hel_ret hel_sign_area(hel_chunk *_chunk, hel_file_id start_sector_id, boo
 			break;
 		}
 
-		start_sector_id = chunk.next_file_id;
+		start_sector_id = chunk.type.not_end.next_file_id;
 
-		ret = READ_CHUNK_METADATA(chunk.next_file_id, &chunk);
+		ret = READ_CHUNK_METADATA(chunk.type.not_end.next_file_id, &chunk);
 		if(ret != hel_success)
 		{
 			// TODO how to heal from this?
@@ -261,7 +262,7 @@ static hel_ret hel_organize_chunks_arr(chunk_data *chunks_arr, int chunks_num)
 		if(need_to_update_first_and_end)
 		{
 			// write_end
-			hel_chunk end_chunk = {.is_file_begin = 0, .is_file_end = 0, .next_file_id = 0, .size = empty_sectors - needed_sectors};
+			hel_chunk end_chunk = {.is_file_begin = 0, .is_file_end = 0, .type.not_end.next_file_id = 0, .type.not_end.sectors_size = empty_sectors - needed_sectors};
 			mem_write_one_helper((chunks_arr[i].id + needed_sectors) * sector_size, sizeof(hel_chunk), &end_chunk);
 		}
 
@@ -269,7 +270,7 @@ static hel_ret hel_organize_chunks_arr(chunk_data *chunks_arr, int chunks_num)
 		if(need_to_update_first || need_to_update_first_and_end)
 		{
 			// write_first
-			hel_chunk first_chunk = {.is_file_begin = 0, .is_file_end = 0, .next_file_id = 0, .size = needed_sectors};
+			hel_chunk first_chunk = {.is_file_begin = 0, .is_file_end = 0, .type.not_end.next_file_id = 0, .type.not_end.sectors_size = needed_sectors};
 			mem_write_one_helper(chunks_arr[i].id * sector_size, sizeof(hel_chunk), &first_chunk);
 		}
 #endif
@@ -279,7 +280,7 @@ static hel_ret hel_organize_chunks_arr(chunk_data *chunks_arr, int chunks_num)
 }
 
 // size is in-out
-static hel_ret hel_write_to_chunk(int size, hel_file_id id, void *buff, bool is_first, hel_file_id next_id)
+static hel_ret hel_write_to_chunk(int size, hel_file_id id, void *buff, bool is_first, bool is_end, hel_file_id next_id)
 {
 	hel_chunk new_file;
 	void *p_chunk_for_mem;
@@ -288,17 +289,18 @@ static hel_ret hel_write_to_chunk(int size, hel_file_id id, void *buff, bool is_
 	hel_ret ret;
 	int needed_sectors = ROUND_UP_DEV(size + sizeof(hel_chunk), sector_size);
 
-	if(next_id != -1)
+	if(!is_end)
 	{
 		// This is not end of file, size is in sectors.
-		new_file.size = needed_sectors;
+		new_file.type.not_end.sectors_size = needed_sectors;
 		new_file.is_file_end = 0;
+		new_file.type.not_end.next_file_id = next_id;
 		size = (needed_sectors * sector_size) - sizeof(hel_chunk);
 	}
 	else
 	{
 		// This is end of file, size is in bytes.
-		new_file.size = size;
+		new_file.type.end.bytes_size = size;
 		new_file.is_file_end = 1;
 	}
 
@@ -309,10 +311,7 @@ static hel_ret hel_write_to_chunk(int size, hel_file_id id, void *buff, bool is_
 	else
 	{
 		new_file.is_file_begin = 0;
-	}
-
-	new_file.next_file_id = next_id;
-	
+	}	
 	
 	ret = hel_sign_area(&new_file, id, false, true);
 	if(ret != hel_success)
@@ -416,7 +415,7 @@ hel_ret hel_format()
 	assert(mem_size % sector_size == 0);
 	
 	// TODO handle cases where the memory range is so big such that need more than one chunk upon format
-	first_chunk.size = mem_size / sector_size;
+	first_chunk.type.not_end.sectors_size = mem_size / sector_size;
 	first_chunk.is_file_begin = 0;
 	first_chunk.is_file_end = 0;
 
@@ -465,7 +464,7 @@ hel_ret hel_create_and_write(void *_in, int size, hel_file_id *out_id)
 		int write_size = new_chunks_arr[i].size;
 		in -= write_size;
 
-		ret = hel_write_to_chunk(write_size, new_chunks_arr[i].id, in, i == 0, (i == chunks_num - 1)? -1: new_chunks_arr[i + 1].id);
+		ret = hel_write_to_chunk(write_size, new_chunks_arr[i].id, in, i == 0, i == chunks_num - 1, (i == chunks_num - 1)? 0: new_chunks_arr[i + 1].id);
 		if(ret != hel_success)
 		{
 			/// No need to delete something in case of failure, if not all chunks written so nothing really done.
@@ -535,7 +534,7 @@ hel_ret hel_read(hel_file_id id, void *_out, int begin, int size)
 		}
 		else
 		{
-			id = read_file.next_file_id;
+			id = read_file.type.not_end.next_file_id;
 			ret = READ_CHUNK_METADATA(id, &read_file);
 			if(ret != hel_success)
 			{
@@ -585,6 +584,29 @@ hel_ret hel_delete(hel_file_id id)
 	return hel_success;
 }
 
+hel_ret hel_get_first_file(hel_file_id *id, hel_chunk  *file)
+{
+	hel_ret ret;
+	hel_chunk curr_file;
+
+	ret = READ_CHUNK_METADATA(0, &curr_file);
+	if(ret != hel_success)
+	{
+		return ret;
+	}
+	
+	*id = 0;
+
+	if(curr_file.is_file_begin)
+	{
+		*file = curr_file;
+
+		return hel_success;
+	}
+
+	return hel_iterate_files(id, file);
+}
+
 hel_ret hel_iterate_files(hel_file_id *id, hel_chunk  *file)
 {
 	hel_ret ret;
@@ -594,22 +616,6 @@ hel_ret hel_iterate_files(hel_file_id *id, hel_chunk  *file)
 	if(*id >= NUM_OF_SECTORS)
 	{
 		return hel_boundaries_err;
-	}
-
-	if((*id == 0) && (file->size == 0))
-	{
-		ret = READ_CHUNK_METADATA(*id, &curr_file);
-		if(ret != hel_success)
-		{
-			return ret;
-		}
-
-		if(curr_file.is_file_begin)
-		{
-			*file = curr_file;
-
-			return hel_success;
-		}
 	}
 
 	curr_file = *file;
