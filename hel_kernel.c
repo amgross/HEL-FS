@@ -28,6 +28,8 @@ static uint8_t *free_map;
 
 #define HEL_MIN(x, y) ((x > y) ? y: x)
 
+#define READ_CHUNK_METADATA(id, p_chunk) mem_driver_read((id) * sector_size, sizeof(hel_chunk), (p_chunk))
+
 static uint32_t mem_size;
 static uint32_t sector_size;
 
@@ -48,10 +50,10 @@ static hel_ret hel_iterator(hel_chunk *curr_file, hel_file_id *id)
 
 	if(next_id >= NUM_OF_SECTORS)
 	{
-		return hel_mem_err; // This can be OK, sign the last chunk
+		return hel_mem_err;
 	}
 
-	ret = mem_driver_read(next_id * sector_size, sizeof(*curr_file), curr_file);
+	ret = READ_CHUNK_METADATA(next_id, curr_file);
 	if(ret != hel_success)
 	{
 		return ret;
@@ -73,7 +75,7 @@ static hel_ret hel_find_empty_place(hel_file_id id, hel_file_id *out_id)
 		}
 	}
 
-	return hel_mem_err; // It may be OK of course
+	return hel_mem_err;
 }
 
 static hel_ret hel_sign_area(hel_chunk *_chunk, hel_file_id start_sector_id, bool all_chain, bool fill)
@@ -103,7 +105,7 @@ static hel_ret hel_sign_area(hel_chunk *_chunk, hel_file_id start_sector_id, boo
 
 		start_sector_id = chunk.next_file_id;
 
-		ret = mem_driver_read(chunk.next_file_id * sector_size, sizeof(chunk), &chunk);
+		ret = READ_CHUNK_METADATA(chunk.next_file_id, &chunk);
 		if(ret != hel_success)
 		{
 			// TODO how toheal from this?
@@ -233,7 +235,7 @@ static hel_ret hel_organize_chunks_arr(chunk_data *chunks_arr, int chunks_num)
 					break;
 				}
 
-				ret = mem_driver_read(curr_id * sector_size, sizeof(curr_chunk), &curr_chunk);
+				ret = READ_CHUNK_METADATA(curr_id, &curr_chunk);
 				if(ret != hel_success)
 				{
 					return ret;
@@ -340,7 +342,7 @@ hel_ret hel_init()
 
 	while((ret = hel_find_empty_place(curr_id, &curr_id)) == hel_success)
 	{ 
-		ret = mem_driver_read(curr_id * sector_size, sizeof(check_chunk), &check_chunk);
+		ret = READ_CHUNK_METADATA(curr_id, &check_chunk);
 		if(ret != hel_success)
 		{
 			return ret;
@@ -481,7 +483,7 @@ hel_ret hel_read(hel_file_id id, void *_out, int begin, int size)
 		return hel_boundaries_err;
 	}
 
-	ret = mem_driver_read(id * sector_size, sizeof(read_file), &read_file);
+	ret = READ_CHUNK_METADATA(id, &read_file);
 	if(ret != hel_success)
 	{
 		return ret;
@@ -519,7 +521,7 @@ hel_ret hel_read(hel_file_id id, void *_out, int begin, int size)
 		else
 		{
 			id = read_file.next_file_id;
-			ret = mem_driver_read(id * sector_size, sizeof(read_file), &read_file);
+			ret = READ_CHUNK_METADATA(id, &read_file);
 			if(ret != hel_success)
 			{
 				return ret;
@@ -540,7 +542,7 @@ hel_ret hel_delete(hel_file_id id)
 		return hel_boundaries_err;
 	}
 
-	ret = mem_driver_read(id * sector_size, sizeof(del_file), &del_file);
+	ret = READ_CHUNK_METADATA(id, &del_file);
 	if(ret != hel_success)
 	{
 		return ret;
@@ -581,7 +583,7 @@ hel_ret hel_iterate_files(hel_file_id *id, hel_chunk  *file)
 
 	if((*id == 0) && (file->size == 0))
 	{
-		ret = mem_driver_read(*id * sector_size, sizeof(curr_file), &curr_file);
+		ret = READ_CHUNK_METADATA(*id, &curr_file);
 		if(ret != hel_success)
 		{
 			return ret;
