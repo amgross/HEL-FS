@@ -14,10 +14,20 @@ typedef enum
 #pragma pack(push, 1)
 typedef struct
 {
-	uint16_t size : 14; // in case is_file_end - it size in bytes, else it size in sectors
-	uint16_t is_file_begin : 1;
-	uint16_t is_file_end : 1;
-	uint16_t next_file_id;
+	uint32_t is_file_begin : 1;
+	uint32_t is_file_end : 1;
+	union
+	{
+		struct
+		{
+			uint32_t bytes_size : 30;
+		}end;
+		struct
+		{
+			uint32_t sectors_size : 14;
+			uint32_t next_file_id : 16;
+		}not_end;
+	}type;
 }hel_chunk;
 #pragma pack(pop)
 
@@ -34,5 +44,7 @@ hel_ret hel_create_and_write(void *in, int size, hel_file_id *out_id);
 hel_ret hel_read(hel_file_id id, void *out, int begin, int size);
 
 hel_ret hel_delete(hel_file_id id);
+
+hel_ret hel_get_first_file(hel_file_id *id, hel_chunk  *file);
 
 hel_ret hel_iterate_files(hel_file_id *id, hel_chunk  *file);
