@@ -43,19 +43,12 @@ static hel_ret hel_iterator(hel_chunk *curr_file, hel_file_id *id)
 	hel_file_id next_id;
 	hel_ret ret;
 
-	if(NULL == curr_file)
-	{
-		next_id = 0;
-	}
-	else
-	{
-		next_id = *id + CHUNK_SIZE_IN_SECTORS(curr_file);
-		assert(next_id <= NUM_OF_SECTORS);
+	next_id = *id + CHUNK_SIZE_IN_SECTORS(curr_file);
+	assert(next_id <= NUM_OF_SECTORS);
 
-		if(next_id >= NUM_OF_SECTORS)
-		{
-			return hel_mem_err; // This can be OK
-		}
+	if(next_id >= NUM_OF_SECTORS)
+	{
+		return hel_mem_err; // This can be OK
 	}
 
 	ret = mem_driver_read(next_id * sector_size, sizeof(*curr_file), curr_file);
@@ -422,11 +415,6 @@ hel_ret hel_format()
 	ret = hel_init();
 		
 	return ret;
-}
-
-void print_file(hel_chunk *file, hel_file_id id)
-{
-	printf("size %d, is file begin %d, is file end %d, id %d\n", file->size, file->is_file_begin, file->is_file_end, id);
 }
 
 hel_ret hel_create_and_write(void *_in, int size, hel_file_id *out_id)
