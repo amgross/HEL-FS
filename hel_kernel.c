@@ -28,6 +28,14 @@ static uint8_t *free_map;
 
 #define HEL_MIN(x, y) ((x > y) ? y: x)
 
+/*
+ * @brief Internal macro for reading chunk metadata from memory.
+ * 
+ * @param id [IN] The id of the chunk to read.
+ * @param p_chunk [OUT] The chunk from memory.
+ * 
+ * @return hel_success upon success, hel_XXXX_err otherwise.
+*/
 #define READ_CHUNK_METADATA(id, p_chunk) mem_driver_read((id) * sector_size, sizeof(hel_chunk), (p_chunk))
 
 static uint32_t mem_size;
@@ -39,13 +47,20 @@ typedef struct
 	int size;
 }chunk_data;
 
-
-static hel_ret hel_iterator(hel_chunk *curr_file, hel_file_id *id)
+/*
+ * @brief internal function to iterate over chunks.
+ * 
+ * @param [INOUT] curr_chunk - pointer to chunk, upon success points to next chunk.
+ * @param [INOUT] id - pointer to the id of curr_chunk, upon success points to the next chunk id.
+ * 
+ * @return hel_success upon success, hel_mem_err in case curr_chunk is last chunk, hel_XXXX_err otherwise.
+ */
+static hel_ret hel_iterator(hel_chunk *curr_chunk, hel_file_id *id)
 {
 	hel_file_id next_id;
 	hel_ret ret;
 
-	next_id = *id + CHUNK_SIZE_IN_SECTORS(curr_file);
+	next_id = *id + CHUNK_SIZE_IN_SECTORS(curr_chunk);
 	assert(next_id <= NUM_OF_SECTORS);
 
 	if(next_id >= NUM_OF_SECTORS)
@@ -53,7 +68,7 @@ static hel_ret hel_iterator(hel_chunk *curr_file, hel_file_id *id)
 		return hel_mem_err;
 	}
 
-	ret = READ_CHUNK_METADATA(next_id, curr_file);
+	ret = READ_CHUNK_METADATA(next_id, curr_chunk);
 	if(ret != hel_success)
 	{
 		return ret;
@@ -61,7 +76,7 @@ static hel_ret hel_iterator(hel_chunk *curr_file, hel_file_id *id)
 
 	*id = next_id;
 	
-	return ret;
+	return hel_success;
 }
 
 static hel_ret hel_find_empty_place(hel_file_id id, hel_file_id *out_id)
@@ -108,7 +123,7 @@ static hel_ret hel_sign_area(hel_chunk *_chunk, hel_file_id start_sector_id, boo
 		ret = READ_CHUNK_METADATA(chunk.next_file_id, &chunk);
 		if(ret != hel_success)
 		{
-			// TODO how toheal from this?
+			// TODO how to heal from this?
 			return ret;
 		}
 
