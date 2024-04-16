@@ -48,7 +48,7 @@ static hel_ret hel_iterator(hel_chunk *curr_file, hel_file_id *id)
 
 	if(next_id >= NUM_OF_SECTORS)
 	{
-		return hel_mem_err; // This can be OK
+		return hel_mem_err; // This can be OK, sign the last chunk
 	}
 
 	ret = mem_driver_read(next_id * sector_size, sizeof(*curr_file), curr_file);
@@ -233,14 +233,12 @@ static hel_ret hel_organize_chunks_arr(chunk_data *chunks_arr, int chunks_num)
 					break;
 				}
 
-				ret = mem_driver_read(curr_id * sector_size, sizeof(curr_id), &curr_id);
+				ret = mem_driver_read(curr_id * sector_size, sizeof(curr_chunk), &curr_chunk);
 				if(ret != hel_success)
 				{
 					return ret;
 				}
-
 			}
-
 		}
 
 		if(need_to_update_first_and_end)
@@ -255,7 +253,7 @@ static hel_ret hel_organize_chunks_arr(chunk_data *chunks_arr, int chunks_num)
 		{
 			// write_first
 			hel_chunk first_chunk = {.is_file_begin = 0, .is_file_end = 0, .next_file_id = 0, .size = needed_sectors};
-			mem_write_one_helper((chunks_arr[i].id) * sector_size, sizeof(hel_chunk), &first_chunk);
+			mem_write_one_helper(chunks_arr[i].id * sector_size, sizeof(hel_chunk), &first_chunk);
 		}
 #endif
 	}
