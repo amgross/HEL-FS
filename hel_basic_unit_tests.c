@@ -1033,6 +1033,46 @@ void read_in_middle_test()
 	}
 }
 
+void basic_defragment_test()
+{
+	hel_file_id id1, id2, id3;
+	hel_ret ret;
+	uint8_t buff[1000];
+
+	mem_driver_init_test(DEFAULT_MEM_SIZE, DEFAULT_SECTOR_SIZE);
+	
+	ret = hel_format();
+	TEST_ASSERT_(ret == hel_success, "Got error %d", ret);
+
+	ret = hel_create_and_write(MY_STR1, sizeof(MY_STR1), &id1);
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	ret = hel_create_and_write(MY_STR2, sizeof(MY_STR2), &id2);
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	ret = hel_create_and_write(MY_STR3, sizeof(MY_STR3), &id3);
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	ret = hel_delete(id1);
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	ret = hel_delete(id2);
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	ret = hel_create_and_write(BIG_STR1, DEFAULT_SECTOR_SIZE + 1, &id1);
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	ret = hel_read(id1, buff, 0, DEFAULT_SECTOR_SIZE + 1);
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	TEST_ASSERT(memcmp(buff, BIG_STR1, DEFAULT_SECTOR_SIZE + 1) == 0);
+
+	ret = hel_read(id3, buff, 0, sizeof(MY_STR3));
+	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
+
+	TEST_ASSERT(memcmp(buff, MY_STR3, sizeof(MY_STR3)) == 0);
+}
+
 #define ADD_TEST(func) {#func, func},
 
 TEST_LIST = {
@@ -1062,6 +1102,7 @@ TEST_LIST = {
 	ADD_TEST(power_down_in_defragment_test)
 	ADD_TEST(basic_iterator_test)
 	ADD_TEST(read_in_middle_test)
+	ADD_TEST(basic_defragment_test)
 
     { NULL, NULL }
 };
