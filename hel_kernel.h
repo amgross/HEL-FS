@@ -11,25 +11,7 @@ typedef enum
 	hel_out_of_heap_err,
 }hel_ret;
 
-#pragma pack(push, 1)
-typedef struct
-{
-	uint32_t is_file_begin : 1;
-	uint32_t is_file_end : 1;
-	union
-	{
-		struct
-		{
-			uint32_t bytes_size : 30;
-		}end;
-		struct
-		{
-			uint32_t sectors_size : 14;
-			uint32_t next_file_id : 16;
-		}not_end;
-	}type;
-}hel_chunk;
-#pragma pack(pop)
+#define ATOMIC_WRITE_SIZE sizeof(uint32_t)
 
 typedef uint32_t hel_file_id;
 
@@ -45,6 +27,6 @@ hel_ret hel_read(hel_file_id id, void *out, int begin, int size);
 
 hel_ret hel_delete(hel_file_id id);
 
-hel_ret hel_get_first_file(hel_file_id *id, hel_chunk  *file);
+hel_ret hel_get_first_file(hel_file_id *id);
 
-hel_ret hel_iterate_files(hel_file_id *id, hel_chunk  *file);
+hel_ret hel_iterate_files(hel_file_id *id);

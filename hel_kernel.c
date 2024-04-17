@@ -14,9 +14,56 @@
 
 static uint8_t *free_map;
 
-#define CHUNK_SIZE_IN_SECTORS(chunk) (!(chunk)->is_file_end ? (chunk)->type.not_end.sectors_size : ROUND_UP_DEV((chunk)->type.end.bytes_size + sizeof(hel_chunk), sector_size))
-#define CHUNK_SIZE_IN_BYTES(chunk) ((CHUNK_SIZE_IN_SECTORS(chunk) * sector_size) - sizeof(hel_chunk))
-#define CHUNK_DATA_BYTES(chunk) ((chunk)->is_file_end ? (chunk)->type.end.bytes_size : CHUNK_SIZE_IN_BYTES(chunk))
+/*
+ * hel_metadata_structure in bits:
+ * 0-29 (30 bits):
+ * 	if this is not end struct:
+ * 		0-14  (15 bits) - next chunk id
+ * 		15-29 (15 bits) - current chunk size !in sectors!
+ * 	else (this is file end chunk)
+ * 		0-29  (30 bits) - current chunk size !in bytes!
+ * 30 (1 bit) - is file start
+ * 31 (1 bit) - is file end
+ */
+typedef uint32_t hel_metadata;
+static_assert(sizeof(hel_metadata) == ATOMIC_WRITE_SIZE);
+
+#define META_NOT_END_NEXT_MASK				0x00007FFF
+#define META_NOT_END_NEXT_OFFSET			0
+
+#define META_NOT_END_SECTORS_SIZE_MASK		0x3FFF8000
+#define META_NOT_END_SECTORS_SIZE_OFFSET 	15
+
+#define MAX_SECTORS_NUM ((1 << 15) - 1) // This is for next id and sectors size will always fit in metadata
+
+#define META_END_BYTES_SIZE_MASK			0x3FFFFFFF
+#define META_END_BYTES_SIZE_OFFSET			0
+
+#define MAX_BYTES_NUM ((1 << 30) - 1) // This is for bytes size will always fit in metadata
+
+#define META_IS_START_MASK					0x40000000
+#define META_IS_START_OFFSET				30
+
+#define META_IS_END_MASK					0x80000000
+#define META_IS_END_OFFSET					31
+
+#define META_GETTER(meta, mask, offset) (((meta) & (mask)) >> offset)
+#define META_SETTER(meta, mask, offset, val) ((meta) = ((meta) & ~(mask)) | (val) << (offset))
+
+#define META_NOT_END_NEXT_GET(meta)			META_GETTER(meta, META_NOT_END_NEXT_MASK, META_NOT_END_NEXT_OFFSET)
+#define META_NOT_END_SECTORS_SIZE_GET(meta)	META_GETTER(meta, META_NOT_END_SECTORS_SIZE_MASK, META_NOT_END_SECTORS_SIZE_OFFSET)
+#define META_END_BYTES_SIZE_GET(meta)		META_GETTER(meta, META_END_BYTES_SIZE_MASK, META_END_BYTES_SIZE_OFFSET)
+#define META_IS_START_GET(meta)				META_GETTER(meta, META_IS_START_MASK, META_IS_START_OFFSET)
+#define META_IS_END_GET(meta)				META_GETTER(meta, META_IS_END_MASK, META_IS_END_OFFSET)
+
+#define META_NOT_END_NEXT_SET(meta, val)			META_SETTER(meta, META_NOT_END_NEXT_MASK, META_NOT_END_NEXT_OFFSET, val)
+#define META_NOT_END_SECTORS_SIZE_SET(meta, val)	META_SETTER(meta, META_NOT_END_SECTORS_SIZE_MASK, META_NOT_END_SECTORS_SIZE_OFFSET, val)
+#define META_END_BYTES_SIZE_SET(meta, val)			META_SETTER(meta, META_END_BYTES_SIZE_MASK, META_END_BYTES_SIZE_OFFSET, val)
+#define META_IS_START_SET(meta, val)				META_SETTER(meta, META_IS_START_MASK, META_IS_START_OFFSET, val)
+#define META_IS_END_SET(meta, val)					META_SETTER(meta, META_IS_END_MASK, META_IS_END_OFFSET, val)
+
+#define CHUNK_SIZE_IN_SECTORS(chunk) (!META_IS_END_GET(*chunk) ? META_NOT_END_SECTORS_SIZE_GET(*chunk) : ROUND_UP_DEV(META_END_BYTES_SIZE_GET(*chunk), sector_size))
+#define CHUNK_DATA_BYTES(chunk) (META_IS_END_GET(*chunk) ? META_END_BYTES_SIZE_GET(*chunk) - sizeof(hel_metadata) :(META_NOT_END_SECTORS_SIZE_GET(*chunk) * sector_size) - sizeof(hel_metadata))
 
 #define SET_FREE_BIT(id) (free_map[(id) / 8] |= (1 << ((id) % 8)))
 #define UNSET_FREE_BIT(id) (free_map[(id) / 8] &= ~(1 << ((id) % 8)))
@@ -36,7 +83,7 @@ static uint8_t *free_map;
  * 
  * @return hel_success upon success, hel_XXXX_err otherwise.
 */
-#define READ_CHUNK_METADATA(id, p_chunk) mem_driver_read((id) * sector_size, sizeof(hel_chunk), (p_chunk))
+#define READ_CHUNK_METADATA(id, p_chunk) mem_driver_read((id) * sector_size, sizeof(hel_metadata), (p_chunk))
 
 static uint32_t mem_size;
 static uint32_t sector_size;
@@ -55,7 +102,7 @@ typedef struct
  * 
  * @return hel_success upon success, hel_mem_err in case curr_chunk is last chunk, hel_XXXX_err otherwise.
  */
-static hel_ret hel_iterator(hel_chunk *curr_chunk, hel_file_id *id)
+static hel_ret hel_iterator(hel_metadata *curr_chunk, hel_file_id *id)
 {
 	hel_file_id next_id;
 	hel_ret ret;
@@ -94,10 +141,10 @@ static hel_ret hel_find_empty_place(hel_file_id id, hel_file_id *out_id)
 	return hel_mem_err;
 }
 
-static hel_ret hel_sign_area(hel_chunk *_chunk, hel_file_id start_sector_id, bool all_chain, bool fill)
+static hel_ret hel_sign_area(hel_metadata *_chunk, hel_file_id start_sector_id, bool all_chain, bool fill)
 {
 	hel_ret ret;
-	hel_chunk chunk = *_chunk;
+	hel_metadata chunk = *_chunk;
 	uint32_t num_of_sectors = CHUNK_SIZE_IN_SECTORS(&chunk);
 
 	while(true)
@@ -114,14 +161,14 @@ static hel_ret hel_sign_area(hel_chunk *_chunk, hel_file_id start_sector_id, boo
 			}
 		}
 
-		if(!all_chain || chunk.is_file_end)
+		if(!all_chain || META_IS_END_GET(chunk))
 		{
 			break;
 		}
 
-		start_sector_id = chunk.type.not_end.next_file_id;
+		start_sector_id = META_NOT_END_NEXT_GET(chunk);
 
-		ret = READ_CHUNK_METADATA(chunk.type.not_end.next_file_id, &chunk);
+		ret = READ_CHUNK_METADATA(start_sector_id, &chunk);
 		if(ret != hel_success)
 		{
 			// TODO how to heal from this?
@@ -180,7 +227,7 @@ static hel_ret hel_get_chunks_for_file(int size, chunk_data **chunks_arr, int *c
 		*chunks_arr = chunks_arr_tmp;
 		(*chunks_arr)[*chunks_num].id = new_file_id;
 
-		int size_in_empty = (empty_sectors * sector_size) - sizeof(hel_chunk);
+		int size_in_empty = (empty_sectors * sector_size) - sizeof(hel_metadata);
 		if(size_in_empty >= size)
 		{
 			(*chunks_arr)[*chunks_num].size = size;
@@ -213,7 +260,7 @@ static hel_ret hel_organize_chunks_arr(chunk_data *chunks_arr, int chunks_num)
 
 	for(int i = 0; i < chunks_num; i++)
 	{
-		hel_chunk first_chunk, curr_chunk;
+		hel_metadata first_chunk, curr_chunk;
 		/*
 		 * options:
 		 * 1. all perfect.
@@ -225,7 +272,7 @@ static hel_ret hel_organize_chunks_arr(chunk_data *chunks_arr, int chunks_num)
 		 */
 		bool need_to_update_first = false, need_to_update_first_and_end = false;
 		int empty_sectors = hel_count_empty_sectors(chunks_arr[i].id);
-		int needed_sectors = ROUND_UP_DEV(chunks_arr[i].size + sizeof(hel_chunk), sector_size);
+		int needed_sectors = ROUND_UP_DEV(chunks_arr[i].size + sizeof(hel_metadata), sector_size);
 		ret = mem_driver_read(chunks_arr[i].id * sector_size, sizeof(first_chunk), &first_chunk);
 		if(ret != hel_success)
 		{
@@ -262,16 +309,26 @@ static hel_ret hel_organize_chunks_arr(chunk_data *chunks_arr, int chunks_num)
 		if(need_to_update_first_and_end)
 		{
 			// write_end
-			hel_chunk end_chunk = {.is_file_begin = 0, .is_file_end = 0, .type.not_end.next_file_id = 0, .type.not_end.sectors_size = empty_sectors - needed_sectors};
-			mem_write_one_helper((chunks_arr[i].id + needed_sectors) * sector_size, sizeof(hel_chunk), &end_chunk);
+			hel_metadata end_chunk;
+			META_IS_START_SET(end_chunk, 0);
+			META_IS_END_SET(end_chunk, 0);
+			META_NOT_END_SECTORS_SIZE_SET(end_chunk, empty_sectors - needed_sectors);
+			// No need to set next ID, as currently it is not part of file.
+			
+			mem_write_one_helper((chunks_arr[i].id + needed_sectors) * sector_size, sizeof(hel_metadata), &end_chunk);
 		}
 
 #ifdef PROTECT_POWER_LOSS
 		if(need_to_update_first || need_to_update_first_and_end)
 		{
 			// write_first
-			hel_chunk first_chunk = {.is_file_begin = 0, .is_file_end = 0, .type.not_end.next_file_id = 0, .type.not_end.sectors_size = needed_sectors};
-			mem_write_one_helper(chunks_arr[i].id * sector_size, sizeof(hel_chunk), &first_chunk);
+			hel_metadata first_chunk;
+			META_IS_START_SET(first_chunk, 0);
+			META_IS_END_SET(first_chunk, 0);
+			META_NOT_END_SECTORS_SIZE_SET(first_chunk, needed_sectors);
+			// No need to set next ID, as currently it is not part of file.
+
+			mem_write_one_helper(chunks_arr[i].id * sector_size, sizeof(hel_metadata), &first_chunk);
 		}
 #endif
 	}
@@ -282,36 +339,31 @@ static hel_ret hel_organize_chunks_arr(chunk_data *chunks_arr, int chunks_num)
 // size is in-out
 static hel_ret hel_write_to_chunk(int size, hel_file_id id, void *buff, bool is_first, bool is_end, hel_file_id next_id)
 {
-	hel_chunk new_file;
+	hel_metadata new_file = 0;;
 	void *p_chunk_for_mem;
 	void *pp_chunk_for_mem[2];
 	int p_size_for_mem[2];
 	hel_ret ret;
-	int needed_sectors = ROUND_UP_DEV(size + sizeof(hel_chunk), sector_size);
+	int data_size_to_write;
 
-	if(!is_end)
+	if(is_end)
 	{
-		// This is not end of file, size is in sectors.
-		new_file.type.not_end.sectors_size = needed_sectors;
-		new_file.is_file_end = 0;
-		new_file.type.not_end.next_file_id = next_id;
-		size = (needed_sectors * sector_size) - sizeof(hel_chunk);
+		META_END_BYTES_SIZE_SET(new_file, size + sizeof(hel_metadata));
+		META_IS_END_SET(new_file, 1);
+		data_size_to_write = size;
 	}
 	else
 	{
-		// This is end of file, size is in bytes.
-		new_file.type.end.bytes_size = size;
-		new_file.is_file_end = 1;
+		int needed_sectors = ROUND_UP_DEV(size + sizeof(hel_metadata), sector_size);
+
+		META_NOT_END_SECTORS_SIZE_SET(new_file, needed_sectors);
+		META_IS_END_SET(new_file, 0);
+		META_NOT_END_NEXT_SET(new_file, next_id);
+		data_size_to_write = (needed_sectors * sector_size) - sizeof(hel_metadata);
+
 	}
 
-	if(is_first)
-	{
-		new_file.is_file_begin = 1;
-	}
-	else
-	{
-		new_file.is_file_begin = 0;
-	}	
+	META_IS_START_SET(new_file, is_first ? 1: 0);
 	
 	ret = hel_sign_area(&new_file, id, false, true);
 	if(ret != hel_success)
@@ -324,7 +376,7 @@ static hel_ret hel_write_to_chunk(int size, hel_file_id id, void *buff, bool is_
 	p_size_for_mem[0] = sizeof(new_file);
 
 	pp_chunk_for_mem[1] = buff;
-	p_size_for_mem[1] = size;
+	p_size_for_mem[1] = data_size_to_write;
 	ret = mem_driver_write(id * sector_size, p_size_for_mem, pp_chunk_for_mem, 2);
 	if(ret != hel_success)
 	{
@@ -337,7 +389,7 @@ static hel_ret hel_write_to_chunk(int size, hel_file_id id, void *buff, bool is_
 hel_ret hel_init()
 {
 	hel_ret ret;
-	hel_chunk check_chunk;
+	hel_metadata check_chunk;
 	hel_file_id curr_id = 0;
 
 	ret = mem_driver_init(&mem_size, &sector_size);
@@ -362,7 +414,7 @@ hel_ret hel_init()
 			return ret;
 		}
 
-		if(check_chunk.is_file_begin)
+		if(META_IS_START_GET(check_chunk))
 		{
 			hel_sign_area(&check_chunk, curr_id, true, true);
 		}
@@ -402,7 +454,7 @@ hel_ret hel_close()
 
 hel_ret hel_format()
 {
-	hel_chunk first_chunk;
+	hel_metadata first_chunk = 0;
 	hel_ret ret;
 
 	ret = mem_driver_init(&mem_size, &sector_size);
@@ -410,14 +462,27 @@ hel_ret hel_format()
 	{
 		return ret;
 	}	
+
+	if(sector_size <= sizeof(hel_metadata))
+	{
+		return hel_boundaries_err;
+	}
+	if(mem_size % sector_size != 0)
+	{
+		return hel_boundaries_err;
+	}
+	if(mem_size > MAX_BYTES_NUM)
+	{
+		return hel_boundaries_err;
+	}
+	if(mem_size / sector_size > MAX_SECTORS_NUM)
+	{
+		return hel_boundaries_err;
+	}
 	
-	assert(sector_size > sizeof(hel_chunk));
-	assert(mem_size % sector_size == 0);
-	
-	// TODO handle cases where the memory range is so big such that need more than one chunk upon format
-	first_chunk.type.not_end.sectors_size = mem_size / sector_size;
-	first_chunk.is_file_begin = 0;
-	first_chunk.is_file_end = 0;
+	META_NOT_END_SECTORS_SIZE_SET(first_chunk, mem_size / sector_size);
+	META_IS_START_SET(first_chunk, 0);
+	META_IS_END_SET(first_chunk, 0);
 
 	ret = mem_write_one_helper(0, sizeof(first_chunk), &first_chunk);
 	if(ret != hel_success)
@@ -489,7 +554,7 @@ hel_ret hel_create_and_write(void *_in, int size, hel_file_id *out_id)
 hel_ret hel_read(hel_file_id id, void *_out, int begin, int size)
 {
 	uint8_t *out = _out;
-	hel_chunk read_file;
+	hel_metadata read_file;
 	hel_ret ret;
 
 	if(id > NUM_OF_SECTORS)
@@ -503,16 +568,17 @@ hel_ret hel_read(hel_file_id id, void *_out, int begin, int size)
 		return ret;
 	}
 
-	if(!read_file.is_file_begin)
+	if(!META_IS_START_GET(read_file))
 	{
 		return hel_not_file_err;
 	}
 
 	while(size != 0)
 	{
-		int begin_offset = HEL_MIN(CHUNK_DATA_BYTES(&read_file), begin);
+		int chunk_data_bytes = CHUNK_DATA_BYTES(&read_file);
+		int begin_offset = HEL_MIN(chunk_data_bytes, begin);
 		begin -= begin_offset;
-		int read_len = (size > CHUNK_DATA_BYTES(&read_file) - begin_offset) ? CHUNK_DATA_BYTES(&read_file) - begin_offset: size;
+		int read_len = (size > chunk_data_bytes - begin_offset) ? chunk_data_bytes - begin_offset: size;
 
 		if(read_len != 0)
 		{
@@ -525,7 +591,7 @@ hel_ret hel_read(hel_file_id id, void *_out, int begin, int size)
 
 		out += read_len;
 		size -= read_len;
-		if(read_file.is_file_end)
+		if(META_IS_END_GET(read_file))
 		{
 			if(size != 0)
 			{
@@ -534,7 +600,7 @@ hel_ret hel_read(hel_file_id id, void *_out, int begin, int size)
 		}
 		else
 		{
-			id = read_file.type.not_end.next_file_id;
+			id = META_NOT_END_NEXT_GET(read_file);
 			ret = READ_CHUNK_METADATA(id, &read_file);
 			if(ret != hel_success)
 			{
@@ -548,7 +614,7 @@ hel_ret hel_read(hel_file_id id, void *_out, int begin, int size)
 
 hel_ret hel_delete(hel_file_id id)
 {
-	hel_chunk del_file;
+	hel_metadata del_file;
 	hel_ret ret;
 
 	if(id > NUM_OF_SECTORS)
@@ -562,12 +628,12 @@ hel_ret hel_delete(hel_file_id id)
 		return ret;
 	}
 
-	if(!del_file.is_file_begin)
+	if(!META_IS_START_GET(del_file))
 	{
 		return hel_not_file_err;
 	}
 
-	del_file.is_file_begin = 0;
+	META_IS_START_SET(del_file, 0);
 
 	ret = hel_sign_area(&del_file, id, true, false);
 	if(ret != hel_success)
@@ -584,10 +650,10 @@ hel_ret hel_delete(hel_file_id id)
 	return hel_success;
 }
 
-hel_ret hel_get_first_file(hel_file_id *id, hel_chunk  *file)
+hel_ret hel_get_first_file(hel_file_id *id)
 {
 	hel_ret ret;
-	hel_chunk curr_file;
+	hel_metadata curr_file;
 
 	ret = READ_CHUNK_METADATA(0, &curr_file);
 	if(ret != hel_success)
@@ -597,20 +663,18 @@ hel_ret hel_get_first_file(hel_file_id *id, hel_chunk  *file)
 	
 	*id = 0;
 
-	if(curr_file.is_file_begin)
+	if(META_IS_START_GET(curr_file))
 	{
-		*file = curr_file;
-
 		return hel_success;
 	}
 
-	return hel_iterate_files(id, file);
+	return hel_iterate_files(id);
 }
 
-hel_ret hel_iterate_files(hel_file_id *id, hel_chunk  *file)
+hel_ret hel_iterate_files(hel_file_id *id)
 {
 	hel_ret ret;
-	hel_chunk curr_file;
+	hel_metadata curr_file;
 	hel_file_id curr_id;
 
 	if(*id >= NUM_OF_SECTORS)
@@ -618,7 +682,12 @@ hel_ret hel_iterate_files(hel_file_id *id, hel_chunk  *file)
 		return hel_boundaries_err;
 	}
 
-	curr_file = *file;
+	ret = READ_CHUNK_METADATA(*id, &curr_file);
+	if(ret != hel_success)
+	{
+		return ret;
+	}
+
 	curr_id = *id;
 
 	while(true)
@@ -629,14 +698,10 @@ hel_ret hel_iterate_files(hel_file_id *id, hel_chunk  *file)
 			return ret;
 		}
 
-		if(curr_file.is_file_begin)
+		if(META_IS_START_GET(curr_file))
 		{
 			*id = curr_id;
-			*file = curr_file;
 			return hel_success;
 		}
 	}
-
-	assert(false);
-	return hel_success;
 }
