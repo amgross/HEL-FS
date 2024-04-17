@@ -14,7 +14,7 @@
 #define MY_STR3 "foo bar foo bar\n"
 #define BIG_STR1 "LSKDMFOIWE43 43 434 3 RE WRF34563453!@#$&^&**&&^DSFKGMSOFDKMGSLKDFMERREWKRkmokmokKNOMOK$#$#@@@@!##$#DSFGDF"
 
-#define MIN_FILE_SIZE sizeof(hel_chunk)
+#define MIN_FILE_SIZE ATOMIC_WRITE_SIZE
 
 #define DEFAULT_MEM_SIZE 0x400
 #define DEFAULT_SECTOR_SIZE 0x20
@@ -950,7 +950,6 @@ void basic_iterator_test()
 {
 	hel_file_id id1, id2, id3, id4;
 	hel_ret ret;
-	hel_chunk file;
 
 	mem_driver_init_test(DEFAULT_MEM_SIZE, DEFAULT_SECTOR_SIZE);
 	
@@ -970,15 +969,15 @@ void basic_iterator_test()
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 
 	
-	ret = hel_get_first_file(&id4, &file);
+	ret = hel_get_first_file(&id4);
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 	TEST_ASSERT_(id1 == id4, "original - %d, got - %d", id1, id4);
 
-	ret = hel_iterate_files(&id4, &file);
+	ret = hel_iterate_files(&id4);
 	TEST_ASSERT_(ret == hel_success, "got error %d", ret);
 	TEST_ASSERT_(id3 == id4, "original - %d, got - %d", id3, id4);
 
-	ret = hel_iterate_files(&id4, &file);
+	ret = hel_iterate_files(&id4);
 	TEST_ASSERT_(ret == hel_mem_err, "expected error hel_mem_err-%d but got %d", hel_mem_err, ret);
 }
 
@@ -1072,6 +1071,21 @@ void basic_defragment_test()
 	TEST_ASSERT(memcmp(buff, MY_STR3, sizeof(MY_STR3)) == 0);
 }
 
+void big_mem_test()
+{
+	hel_ret ret;
+	mem_driver_init_test(1 << 18, 8);
+	
+	ret = hel_format();
+	TEST_ASSERT_(ret == hel_boundaries_err, "expected error hel_boundaries_err-%d but got %d", hel_boundaries_err, ret);
+
+	mem_driver_init_test((1 << 18) - 8, 8);
+	
+	ret = hel_format();
+	TEST_ASSERT_(ret == hel_success, "Got error %d", ret);
+
+}
+
 #define ADD_TEST(func) {#func, func},
 
 TEST_LIST = {
@@ -1102,6 +1116,7 @@ TEST_LIST = {
 	ADD_TEST(basic_iterator_test)
 	ADD_TEST(read_in_middle_test)
 	ADD_TEST(basic_defragment_test)
+	ADD_TEST(big_mem_test)
 
     { NULL, NULL }
 };
