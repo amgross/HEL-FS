@@ -1083,7 +1083,20 @@ void big_mem_test()
 	
 	ret = hel_format();
 	TEST_ASSERT_(ret == hel_success, "Got error %d", ret);
+}
 
+void get_first_file_when_empty_test()
+{
+	hel_ret ret;
+	hel_file_id id;
+
+	mem_driver_init_test(DEFAULT_MEM_SIZE, DEFAULT_SECTOR_SIZE);
+	
+	ret = hel_format();
+	TEST_ASSERT_(ret == hel_success, "Got error %d", ret);
+	
+	ret = hel_get_first_file(&id);
+	TEST_ASSERT_(ret == hel_mem_err, "expected error hel_mem_err-%d but got %d", hel_mem_err, ret);
 }
 
 #define ADD_TEST(func) {#func, func},
@@ -1117,6 +1130,7 @@ TEST_LIST = {
 	ADD_TEST(read_in_middle_test)
 	ADD_TEST(basic_defragment_test)
 	ADD_TEST(big_mem_test)
+	ADD_TEST(get_first_file_when_empty_test)
 
     { NULL, NULL }
 };
