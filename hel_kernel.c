@@ -12,7 +12,7 @@
 // TODO This not protecting against wrapparounds
 #define ROUND_UP_DEV(x, y) (((x) + (y) - 1) / y)
 
-static uint8_t *free_map;
+static uint8_t *used_map;
 
 /*
  * hel_metadata_structure in bits:
@@ -65,9 +65,9 @@ static_assert(sizeof(hel_metadata) == ATOMIC_WRITE_SIZE);
 #define CHUNK_SIZE_IN_SECTORS(chunk) (!META_IS_END_GET(*chunk) ? META_NOT_END_SECTORS_SIZE_GET(*chunk) : ROUND_UP_DEV(META_END_BYTES_SIZE_GET(*chunk), sector_size))
 #define CHUNK_DATA_BYTES(chunk) (META_IS_END_GET(*chunk) ? META_END_BYTES_SIZE_GET(*chunk) - sizeof(hel_metadata) :(META_NOT_END_SECTORS_SIZE_GET(*chunk) * sector_size) - sizeof(hel_metadata))
 
-#define SET_FREE_BIT(id) (free_map[(id) / 8] |= (1 << ((id) % 8)))
-#define UNSET_FREE_BIT(id) (free_map[(id) / 8] &= ~(1 << ((id) % 8)))
-#define GET_FREE_BIT(id) (free_map[(id) / 8] &  (1 << ((id) % 8)))
+#define SET_USED_BIT(id) (used_map[(id) / 8] |= (1 << ((id) % 8)))
+#define UNSET_USED_BIT(id) (used_map[(id) / 8] &= ~(1 << ((id) % 8)))
+#define GET_USED_BIT(id) (used_map[(id) / 8] &  (1 << ((id) % 8)))
 
 #define NUM_OF_SECTORS (mem_size / sector_size)
 
@@ -127,11 +127,21 @@ static hel_ret hel_iterator(hel_metadata *curr_chunk, hel_file_id *id)
 	return hel_success;
 }
 
-static hel_ret hel_find_empty_place(hel_file_id id, hel_file_id *out_id)
+/*
+ * @brief internal function for finding next empty chunk.
+ * 
+ * @param [IN] id - the chunk id to start searching from.
+ * @param [OUT] out_id - the first id of chunk, starting from id, which is not part of file.
+ * 
+ * @return hel_success if found such empty chunk, hel_mem_err if no such empty chunk exist.
+ */
+static hel_ret hel_find_empty_chunk(hel_file_id id, hel_file_id *out_id)
 {
+	assert(id <= NUM_OF_SECTORS);
+
 	for(int curr_id = id; curr_id < mem_size / sector_size; curr_id++)
 	{
-		if(!GET_FREE_BIT(curr_id))
+		if(!GET_USED_BIT(curr_id))
 		{
 			*out_id = curr_id;
 			return hel_success;
@@ -141,52 +151,71 @@ static hel_ret hel_find_empty_place(hel_file_id id, hel_file_id *out_id)
 	return hel_mem_err;
 }
 
-static hel_ret hel_sign_area(hel_metadata *_chunk, hel_file_id start_sector_id, bool all_chain, bool fill)
+/*
+ * @brief internal function for signing internally chunk/chain of chunks as free or part of file.
+ * 
+ * @param [IN] chunk - the metadata of the first chunk need to sign.
+ * @param [IN] start_sector_id - the id of the first sector in the chunk.
+ * @param [IN] all_chain - if need to sign just current chunk or aso the whole chain it points to.
+ * @param [IN] in_use - if the chunk(s) is in use ore free.
+ * 
+ * @return hel_success upon success, hel_XXXX_err otherwise.
+ */
+static hel_ret hel_sign_area(hel_metadata *chunk, hel_file_id start_sector_id, bool all_chain, bool in_use)
 {
 	hel_ret ret;
-	hel_metadata chunk = *_chunk;
-	uint32_t num_of_sectors = CHUNK_SIZE_IN_SECTORS(&chunk);
+	uint32_t num_of_sectors = CHUNK_SIZE_IN_SECTORS(chunk);
 
 	while(true)
 	{
 		for(hel_file_id id = start_sector_id; id < start_sector_id + num_of_sectors; id++)
 		{
-			if(fill)
+			if(in_use)
 			{
-				SET_FREE_BIT(id);
+				SET_USED_BIT(id);
 			}
 			else
 			{
-				UNSET_FREE_BIT(id);
+				UNSET_USED_BIT(id);
 			}
 		}
 
-		if(!all_chain || META_IS_END_GET(chunk))
+		if(!all_chain || META_IS_END_GET(*chunk))
 		{
 			break;
 		}
 
-		start_sector_id = META_NOT_END_NEXT_GET(chunk);
+		start_sector_id = META_NOT_END_NEXT_GET(*chunk);
 
-		ret = READ_CHUNK_METADATA(start_sector_id, &chunk);
+		ret = READ_CHUNK_METADATA(start_sector_id, chunk);
 		if(ret != hel_success)
 		{
 			// TODO how to heal from this?
 			return ret;
 		}
 
-		num_of_sectors = CHUNK_SIZE_IN_SECTORS(&chunk);
+		num_of_sectors = CHUNK_SIZE_IN_SECTORS(chunk);
 	}
 
 	return hel_success;
 }
 
-static int hel_count_empty_sectors(hel_file_id id)
+/*
+ * @brief internal function for counting how many cosecutive free sectors there are, starting from specific id
+ * 
+ * @param [IN] id - the id of the sector to start from
+ * 
+ * @return the number of consecutive free sectors
+ */
+static int hel_count_consecutive_free_sectors(hel_file_id id)
 {
 	int ret = 0;
-	for(; id < mem_size / sector_size; id++)
+
+	assert(id < NUM_OF_SECTORS);
+
+	for(; id < NUM_OF_SECTORS; id++)
 	{
-		if(GET_FREE_BIT(id))
+		if(GET_USED_BIT(id))
 		{
 			return ret;
 		}
@@ -198,11 +227,31 @@ static int hel_count_empty_sectors(hel_file_id id)
 	return ret;
 }
 
+/*
+ * @brief internal function for writing single buffer to memory.
+ *
+ * @param [IN] v_addr - virtual address to start writing from.
+ * @param [IN] size - num of bytes to write.
+ * @param [IN] in - buffer to write from.
+ * 
+ * @return hel_success upon success, hel_XXXX_err otherwise.
+ */
 static hel_ret mem_write_one_helper(uint32_t v_addr, int size, void *in)
 {
 	return mem_driver_write(v_addr, &size, &in, 1);
 }
 
+/*
+ * @brief internal function that decides where to create chunks for file.
+ *
+ * @param [IN]  size - num of data bytes that need space for them.
+ * @param [OUT] chunks_arr - array of chunks to write the data to them. It allocated in the function and should be free outside in case of success.
+ * @param [OUT] chunks_num - number of chunks in chunks_arr.
+ * 
+ * @return hel_success upon success, hel_XXXX_err otherwise.
+ * 
+ * @note this function is the main function that can be changed to optimize writes upon needs. currently it uses greedy implementation that chooses the first chunks.
+ */
 static hel_ret hel_get_chunks_for_file(int size, chunk_data **chunks_arr, int *chunks_num)
 {
 	hel_file_id new_file_id = 0;
@@ -214,9 +263,9 @@ static hel_ret hel_get_chunks_for_file(int size, chunk_data **chunks_arr, int *c
 	*chunks_num = 0;
 
 
-	while((ret = hel_find_empty_place(new_file_id, &new_file_id)) == hel_success)
+	while((ret = hel_find_empty_chunk(new_file_id, &new_file_id)) == hel_success)
 	{			
-		empty_sectors = hel_count_empty_sectors(new_file_id);
+		empty_sectors = hel_count_consecutive_free_sectors(new_file_id);
 		chunks_arr_tmp = (chunk_data *)realloc(*chunks_arr, (*chunks_num + 1) * sizeof(chunk_data));
 		if(chunks_arr_tmp == NULL)
 		{
@@ -229,13 +278,13 @@ static hel_ret hel_get_chunks_for_file(int size, chunk_data **chunks_arr, int *c
 
 		int size_in_empty = (empty_sectors * sector_size) - sizeof(hel_metadata);
 		if(size_in_empty >= size)
-		{
+		{ // Last chunk
 			(*chunks_arr)[*chunks_num].size = size;
 			(*chunks_num)++;
 			break;
 		}
 		else
-		{
+		{ // not last chunk
 			new_file_id += empty_sectors;
 			size -= size_in_empty;
 
@@ -254,6 +303,14 @@ static hel_ret hel_get_chunks_for_file(int size, chunk_data **chunks_arr, int *c
 	return hel_success;
 }
 
+/*
+ * @brief Before writing the actual data, creating/defragmenting chunks.
+ *
+ * @param [IN] chunks_arr - array of chunks that need to create.
+ * @param [IN] chunks_num - number of chunks in chunks_arr.
+ * 
+ * @return hel_success upon success, hel_XXXX_err otherwise.
+ */
 static hel_ret hel_organize_chunks_arr(chunk_data *chunks_arr, int chunks_num)
 {
 	hel_ret ret;
@@ -271,7 +328,7 @@ static hel_ret hel_organize_chunks_arr(chunk_data *chunks_arr, int chunks_num)
 		 * if after not exist, else if first is fragmented
 		 */
 		bool need_to_update_first = false, need_to_update_first_and_end = false;
-		int empty_sectors = hel_count_empty_sectors(chunks_arr[i].id);
+		int empty_sectors = hel_count_consecutive_free_sectors(chunks_arr[i].id);
 		int needed_sectors = ROUND_UP_DEV(chunks_arr[i].size + sizeof(hel_metadata), sector_size);
 		ret = mem_driver_read(chunks_arr[i].id * sector_size, sizeof(first_chunk), &first_chunk);
 		if(ret != hel_success)
@@ -336,7 +393,18 @@ static hel_ret hel_organize_chunks_arr(chunk_data *chunks_arr, int chunks_num)
 	return hel_success;
 }
 
-// size is in-out
+/*
+ * @brief write chunk with metadata and data.
+ *
+ * @param [IN] size - num of data bytes to write.
+ * @param [IN] id - the id of sector to start the chunk from.
+ * @param [IN] buff - buffer to write the data from.
+ * @param [IN] is_first - if the chunk is first chunk of file.
+ * @param [IN] is_end - if the chunk is last chunk of file.
+ * @param [IN] next_id - the id of first sector in next file chunk, if (is_end == true) the value igmnored.
+ * 
+ * @return hel_success upon success, hel_XXXX_err otherwise.
+ */
 static hel_ret hel_write_to_chunk(int size, hel_file_id id, void *buff, bool is_first, bool is_end, hel_file_id next_id)
 {
 	hel_metadata new_file = 0;;
@@ -398,15 +466,15 @@ hel_ret hel_init()
 		return ret;
 	}
 
-	free_map = (uint8_t *)malloc(ROUND_UP_DEV(mem_size / sector_size, 8));
-	if(free_map == NULL)
+	used_map = (uint8_t *)malloc(ROUND_UP_DEV(mem_size / sector_size, 8));
+	if(used_map == NULL)
 	{
 		return hel_out_of_heap_err;
 	}
 
-	memset(free_map, 0, ROUND_UP_DEV(mem_size / sector_size, 8));
+	memset(used_map, 0, ROUND_UP_DEV(mem_size / sector_size, 8));
 
-	while((ret = hel_find_empty_place(curr_id, &curr_id)) == hel_success)
+	while((ret = hel_find_empty_chunk(curr_id, &curr_id)) == hel_success)
 	{ 
 		ret = READ_CHUNK_METADATA(curr_id, &check_chunk);
 		if(ret != hel_success)
@@ -440,8 +508,8 @@ hel_ret hel_close()
 {
 	hel_ret ret;
 
-	free(free_map);
-	free_map = NULL;
+	free(used_map);
+	used_map = NULL;
 
 	ret = mem_driver_close();
 	if(ret != hel_success)
