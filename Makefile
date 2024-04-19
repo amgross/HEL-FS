@@ -1,11 +1,11 @@
 CC = gcc
 CFLAGS = -Wall -Werror -g -o0
 TARGET = test.out
-SRC_DIR = .
+SRC_DIR = tests kernel
 BUILD_DIR = build
 
 
-SRCS = $(wildcard $(SRC_DIR)/*.c)
+SRCS = $(foreach dir,$(SRC_DIR),$(wildcard $(dir)/*.c))
 OBJS = $(SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 
 .PHONY: all clean
