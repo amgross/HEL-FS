@@ -8,7 +8,7 @@
 #include <math.h>
 
 
-#include "hel_kernel.h"
+#include "../kernel/hel_kernel.h"
 #include "test_utils.h"
 
 static uint8_t *mem_buff = NULL;

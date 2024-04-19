@@ -5,7 +5,7 @@
 #include <setjmp.h>
 #include <stdbool.h>
 
-#include "hel_kernel.h"
+#include "../kernel/hel_kernel.h"
 #include "test_utils.h"
 
 

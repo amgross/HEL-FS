@@ -8,6 +8,11 @@ Limitations:
 - The file system requiers lots of memory reads, to overcome the fact there is no metadata outside files about them.
 - There is no file naming neither directories out of the box, one should implement its own way to differ between file or use our applicable application layer.
 
+
+Directory hirarchy:
+- kernel: the kernel of the file system, include the code + API + mem driver API needed to implemented by user.
+- tests: the tests for CI.
+
 Critical things still missings:
 - Option to change file after first creation.
 - Basic application layer for file naming functionality.
