@@ -1,6 +1,8 @@
 
 #pragma once
 
+#include <stdint.h>
+
 typedef enum
 {
 	hel_success,
@@ -41,15 +43,16 @@ hel_ret hel_close();
 /*
  * @brief create file and writes to it.
  *
- * @param [IN] in - buffer to write from.
- * @param [IN] size - number of bytes to write to the file.
- * @param [OUT] out_id - the id of the new file.
+ * @param [IN] in - array of buffers to write file data from.
+ * @param [IN] size - array of number of bytes to write to the file, each one correspand to the align buffer on the buffers array.
+ * @param [IN] num - the number of buffers.
+ * @param [OUT] out_id - the new file id.
  *
  * @return hel_success upon success, hel_XXXX_err otherwise.
  * 
  * @note the motivation behind adding the write with the create is to reduce number of writes to the memory.
  */
-hel_ret hel_create_and_write(void *in, int size, hel_file_id *out_id);
+hel_ret hel_create_and_write(void **in, int *size, int num, hel_file_id *out_id);
 
 /*
  * @brief read content of file.

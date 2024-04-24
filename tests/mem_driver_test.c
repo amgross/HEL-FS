@@ -109,17 +109,16 @@ hel_ret mem_driver_close()
 	return hel_success;
 }
 
-hel_ret mem_driver_write(uint32_t v_addr, int* size, void **in, int buffs_num)
+hel_ret mem_driver_write(uint32_t v_addr, uint32_t *atomic_write, void **in, int* size, int buffs_num)
 {
 	assert(mem_buff != NULL);
-	assert(size[0] >= ATOMIC_WRITE_SIZE);
 
-	// THis is for writing the metadata in the end atomically
-	uint8_t *metadata = in[0];
-	in[0] = (uint8_t *)in[0] + ATOMIC_WRITE_SIZE;
+	// This is for writing the metadata in the end atomically
 	uint32_t orig_v_addr = v_addr;
-	v_addr += ATOMIC_WRITE_SIZE;
-	size[0] -= ATOMIC_WRITE_SIZE;
+	if(atomic_write != NULL)
+	{
+		v_addr += ATOMIC_WRITE_SIZE;
+	}
 
 	bool down = decide_if_power_down(size, buffs_num);
 
@@ -138,7 +137,10 @@ hel_ret mem_driver_write(uint32_t v_addr, int* size, void **in, int buffs_num)
 		longjmp(env, 0);
 	}
 
-	memcpy(mem_buff + orig_v_addr, metadata, ATOMIC_WRITE_SIZE);
+	if(atomic_write != NULL)
+	{
+		memcpy(mem_buff + orig_v_addr, atomic_write, ATOMIC_WRITE_SIZE);
+	}
 
 
 	return hel_success;
