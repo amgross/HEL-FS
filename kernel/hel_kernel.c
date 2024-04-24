@@ -771,7 +771,14 @@ hel_ret hel_iterate_files(hel_file_id *id)
 		ret = hel_iterator(&curr_file, &curr_id);
 		if(ret != hel_success)
 		{
-			return ret;
+			if(ret == hel_mem_err)
+			{
+				return hel_file_not_exist_err;
+			}
+			else
+			{
+				return ret;
+			}
 		}
 
 		if(META_IS_START_GET(curr_file))
