@@ -12,8 +12,8 @@
 #include "test_utils.h"
 
 static uint8_t *mem_buff = NULL;
-static uint32_t mem_size;
-static uint32_t sector_size;
+static HEL_BASE_TYPE mem_size;
+static HEL_BASE_TYPE sector_size;
 
 #define HEL_MIN(x, y) ((x > y) ? y: x)
 
@@ -23,7 +23,7 @@ int power_down_prob = 0;
 
 extern void fill_rand_buff(uint8_t *buff, size_t len);
 
-static bool decide_if_power_down(int *size, int num)
+static bool decide_if_power_down(HEL_BASE_TYPE *size, HEL_BASE_TYPE num)
 {
 	switch(power_down)
 	{
@@ -47,8 +47,8 @@ static bool decide_if_power_down(int *size, int num)
 		{
 			if((rand() % power_down_prob) == 0)
 			{
-				int total_size = 0;
-				for(int i = 0; i < num; i++)
+				HEL_BASE_TYPE total_size = 0;
+				for(HEL_BASE_TYPE i = 0; i < num; i++)
 				{
 					total_size += size[i];
 				}
@@ -58,7 +58,7 @@ static bool decide_if_power_down(int *size, int num)
 					total_size = rand() % total_size;
 				}
 				
-				for(int i = 0; i < num; i++)
+				for(HEL_BASE_TYPE i = 0; i < num; i++)
 				{
 					size[i] = HEL_MIN(size[i], total_size); // There is no problem to change it as anyway we about to power down
 					total_size -= size[i];
@@ -80,7 +80,7 @@ static bool decide_if_power_down(int *size, int num)
 	return false;
 }
 
-void mem_driver_init_test(uint32_t size, uint32_t _sector_size)
+void mem_driver_init_test(HEL_BASE_TYPE size, HEL_BASE_TYPE _sector_size)
 {
 	mem_size = size;
 	sector_size = _sector_size;
@@ -92,7 +92,7 @@ void mem_driver_init_test(uint32_t size, uint32_t _sector_size)
 	fill_rand_buff(mem_buff, size);
 }
 
-hel_ret mem_driver_init(uint32_t *size, uint32_t *_sector_size)
+hel_ret mem_driver_init(HEL_BASE_TYPE *size, HEL_BASE_TYPE *_sector_size)
 {
 	assert(size != NULL);
 	assert(_sector_size != NULL);
@@ -109,12 +109,12 @@ hel_ret mem_driver_close()
 	return hel_success;
 }
 
-hel_ret mem_driver_write(uint32_t v_addr, uint32_t *atomic_write, void **in, int* size, int buffs_num)
+hel_ret mem_driver_write(HEL_BASE_TYPE v_addr, HEL_BASE_TYPE *atomic_write, void **in, HEL_BASE_TYPE* size, HEL_BASE_TYPE buffs_num)
 {
 	assert(mem_buff != NULL);
 
 	// This is for writing the metadata in the end atomically
-	uint32_t orig_v_addr = v_addr;
+	HEL_BASE_TYPE orig_v_addr = v_addr;
 	if(atomic_write != NULL)
 	{
 		v_addr += ATOMIC_WRITE_SIZE;
@@ -122,9 +122,9 @@ hel_ret mem_driver_write(uint32_t v_addr, uint32_t *atomic_write, void **in, int
 
 	bool down = decide_if_power_down(size, buffs_num);
 
-	for(int i = 0; i < buffs_num; i++)
+	for(HEL_BASE_TYPE i = 0; i < buffs_num; i++)
 	{
-		int curr_size = size[i];
+		HEL_BASE_TYPE curr_size = size[i];
 		assert((v_addr < mem_size) && (mem_size - v_addr >= size[i]));
 
 		memcpy(mem_buff + v_addr, in[i], curr_size);
@@ -146,7 +146,7 @@ hel_ret mem_driver_write(uint32_t v_addr, uint32_t *atomic_write, void **in, int
 	return hel_success;
 }
 
-hel_ret mem_driver_read(uint32_t v_addr, int size, void *_out)
+hel_ret mem_driver_read(HEL_BASE_TYPE v_addr, HEL_BASE_TYPE size, void *_out)
 {
 	uint8_t *out = _out;
 	assert(mem_buff != NULL);

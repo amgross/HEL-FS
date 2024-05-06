@@ -18,12 +18,12 @@ hel_ret hel_naming_close()
 	return hel_close();
 }
 
-hel_ret hel_naming_create_and_write(char name[FILE_NAME_SIZE], void **in, int *size, int num, hel_file_id *out_id)
+hel_ret hel_naming_create_and_write(char name[FILE_NAME_SIZE], void **in, HEL_BASE_TYPE *size, HEL_BASE_TYPE num, hel_file_id *out_id)
 {
 	hel_ret ret;
 	hel_file_id id;
 	void *all_buffers[num + 1];
-	int all_sizes[num + 1];
+	HEL_BASE_TYPE all_sizes[num + 1];
 
 	ret = hel_naming_get_id(name, &id);
 	if(hel_success == ret)
@@ -38,7 +38,7 @@ hel_ret hel_naming_create_and_write(char name[FILE_NAME_SIZE], void **in, int *s
 	all_buffers[0] = name;
 	all_sizes[0] = FILE_NAME_SIZE;
 
-	for(int i = 0; i < num; i++)
+	for(HEL_BASE_TYPE i = 0; i < num; i++)
 	{
 		all_buffers[i + 1] = in[i];
 		all_sizes[i + 1] = size[i];
@@ -73,7 +73,7 @@ hel_ret hel_naming_get_id(char name[FILE_NAME_SIZE], hel_file_id *id)
 	return ret;
 }
 
-hel_ret hel_naming_read(hel_file_id id, void *out, int begin, int size)
+hel_ret hel_naming_read(hel_file_id id, void *out, HEL_BASE_TYPE begin, HEL_BASE_TYPE size)
 {
 	return hel_read(id, out, begin + FILE_NAME_SIZE, size);
 }

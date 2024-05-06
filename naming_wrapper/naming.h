@@ -49,7 +49,7 @@ hel_ret hel_naming_close();
  * 
  * @note the motivation behind giving the option to write multiple buffers is to reduce writes overheads.
  */
-hel_ret hel_naming_create_and_write(char name[FILE_NAME_SIZE], void **in, int *size, int num, hel_file_id *out_id);
+hel_ret hel_naming_create_and_write(char name[FILE_NAME_SIZE], void **in, HEL_BASE_TYPE *size, HEL_BASE_TYPE num, hel_file_id *out_id);
 
 /*
  * @brief get file id of specific file.
@@ -71,7 +71,7 @@ hel_ret hel_naming_get_id(char name[FILE_NAME_SIZE], hel_file_id *id);
  *
  * @return hel_success upon success, hel_XXXX_err otherwise.
  */
-hel_ret hel_naming_read(hel_file_id id, void *out, int begin, int size);
+hel_ret hel_naming_read(hel_file_id id, void *out, HEL_BASE_TYPE begin, HEL_BASE_TYPE size);
 
 /*
  * @brief delete file.

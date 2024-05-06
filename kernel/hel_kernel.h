@@ -15,9 +15,11 @@ typedef enum
 	hel_file_not_exist_err,
 }hel_ret;
 
-#define ATOMIC_WRITE_SIZE sizeof(uint32_t)
+#define HEL_BASE_TYPE uint32_t
 
-typedef uint32_t hel_file_id;
+#define ATOMIC_WRITE_SIZE sizeof(HEL_BASE_TYPE)
+
+typedef HEL_BASE_TYPE hel_file_id;
 
 /*
  * @brief formats the file system
@@ -56,7 +58,7 @@ hel_ret hel_close();
  * 
  * @note the motivation behind giving the option to write multiple buffers is to reduce writes overheads.
  */
-hel_ret hel_create_and_write(void **in, int *size, int num, hel_file_id *out_id);
+hel_ret hel_create_and_write(void **in, HEL_BASE_TYPE *size, HEL_BASE_TYPE num, hel_file_id *out_id);
 
 /*
  * @brief read content of file.
@@ -68,7 +70,7 @@ hel_ret hel_create_and_write(void **in, int *size, int num, hel_file_id *out_id)
  *
  * @return hel_success upon success, hel_XXXX_err otherwise.
  */
-hel_ret hel_read(hel_file_id id, void *out, int begin, int size);
+hel_ret hel_read(hel_file_id id, void *out, HEL_BASE_TYPE begin, HEL_BASE_TYPE size);
 
 /*
  * @brief delete file.
