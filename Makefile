@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -Wall -Werror -g -o0
 TARGET = test.out
-SRC_DIR = tests kernel
+SRC_DIR = tests kernel naming_wrapper
 BUILD_DIR = build
 
 
