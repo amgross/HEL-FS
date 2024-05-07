@@ -26,7 +26,7 @@
 static 	hel_file_id g_id1;
 static bool g_file_created = false;
 
-static hel_ret test_create_and_write_one_helper(void *buff, int size, hel_file_id *id)
+static hel_ret test_create_and_write_one_helper(void *buff, HEL_BASE_TYPE size, hel_file_id *id)
 {
 	return hel_create_and_write(&buff, &size, 1, id);
 }
@@ -116,7 +116,7 @@ void write_exact_size_test()
 	uint8_t buff[DEFAULT_MEM_SIZE];
 	fill_rand_buff((uint8_t *)buff, sizeof(buff));
 	uint8_t out_buff[sizeof(buff)];
-	int size_to_write = DEFAULT_MEM_SIZE - MIN_FILE_SIZE;
+	HEL_BASE_TYPE size_to_write = DEFAULT_MEM_SIZE - MIN_FILE_SIZE;
 
 	mem_driver_init_test(DEFAULT_MEM_SIZE, DEFAULT_SECTOR_SIZE);
 	
@@ -157,7 +157,7 @@ void read_part_of_file_test()
 	hel_ret ret;
 	uint8_t buff[100];
 	buff[0] = 0;
-	int size_to_read = sizeof(MY_STR1) - 1;
+	HEL_BASE_TYPE size_to_read = sizeof(MY_STR1) - 1;
 
 	mem_driver_init_test(DEFAULT_MEM_SIZE, DEFAULT_SECTOR_SIZE);
 	
@@ -353,7 +353,7 @@ void basic_mem_leak_test()
 	ret = hel_format();
 	TEST_ASSERT_(ret == hel_success, "Got error %d", ret);
 	
-	for(int i = 0; i < DEFAULT_MEM_SIZE; i++)
+	for(HEL_BASE_TYPE i = 0; i < DEFAULT_MEM_SIZE; i++)
 	{
 		ret = test_create_and_write_one_helper(MY_STR1, sizeof(MY_STR1), &id);
 		TEST_ASSERT_(ret == hel_success, "got error %d, cycle %d", ret, i);
@@ -1029,8 +1029,8 @@ void read_in_middle_test()
 
 	for(int i = 0; i < 20; i ++)
 	{
-		int offset = rand() % sizeof(BIG_STR1);
-		int size = rand() % (sizeof(BIG_STR1) - offset);
+		HEL_BASE_TYPE offset = rand() % sizeof(BIG_STR1);
+		HEL_BASE_TYPE size = rand() % (sizeof(BIG_STR1) - offset);
 		ret = hel_read(id1, buff, offset, size);
 		TEST_ASSERT_(ret == hel_success, "got error %d, round %d, begin %d, size %d, string size %ld", ret, i, offset, size, sizeof(BIG_STR1));
 
@@ -1112,7 +1112,7 @@ void basic_creation_2_buffs_test()
 	hel_ret ret;
 	uint8_t buff[100];
 	buff[0] = 0;
-	int sizes[2];
+	HEL_BASE_TYPE sizes[2];
 	void *buffs[2];
 
 	sizes[0] = sizeof(MY_STR1) / 2;
@@ -1145,7 +1145,7 @@ void random_multi_buffer_creation_test()
 	hel_ret ret;
 	hel_file_id id1, id2, id3;
 	void *buffs[2];
-	int sizes[2];
+	HEL_BASE_TYPE sizes[2];
 	uint8_t buff[sizeof(BIG_STR1)];
 
 	mem_driver_init_test(DEFAULT_MEM_SIZE, DEFAULT_SECTOR_SIZE);

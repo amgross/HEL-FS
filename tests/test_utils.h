@@ -2,7 +2,9 @@
 #include <stdint.h>
 #include <setjmp.h>
 
-void mem_driver_init_test(uint32_t size, uint32_t sector_size);
+#include "../kernel/hel_kernel.h"
+
+void mem_driver_init_test(HEL_BASE_TYPE size, HEL_BASE_TYPE sector_size);
 
 typedef enum{
 	PD_NONE,

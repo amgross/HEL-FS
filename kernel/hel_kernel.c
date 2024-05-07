@@ -25,7 +25,7 @@ static uint8_t *used_map;
  * 30 (1 bit) - is file start
  * 31 (1 bit) - is file end
  */
-typedef uint32_t hel_metadata;
+typedef HEL_BASE_TYPE hel_metadata;
 static_assert(sizeof(hel_metadata) == ATOMIC_WRITE_SIZE);
 
 #define META_NOT_END_NEXT_MASK				0x00007FFF
@@ -85,13 +85,13 @@ static_assert(sizeof(hel_metadata) == ATOMIC_WRITE_SIZE);
 */
 #define READ_CHUNK_METADATA(id, p_chunk) mem_driver_read((id) * sector_size, sizeof(hel_metadata), (p_chunk))
 
-static uint32_t mem_size;
-static uint32_t sector_size;
+static HEL_BASE_TYPE mem_size;
+static HEL_BASE_TYPE sector_size;
 
 typedef struct
 {
 	hel_file_id id;
-	int size;
+	HEL_BASE_TYPE size;
 }chunk_data;
 
 /*
@@ -139,7 +139,7 @@ static hel_ret hel_find_empty_chunk(hel_file_id id, hel_file_id *out_id)
 {
 	assert(id <= NUM_OF_SECTORS);
 
-	for(int curr_id = id; curr_id < mem_size / sector_size; curr_id++)
+	for(HEL_BASE_TYPE curr_id = id; curr_id < mem_size / sector_size; curr_id++)
 	{
 		if(!GET_USED_BIT(curr_id))
 		{
@@ -164,7 +164,7 @@ static hel_ret hel_find_empty_chunk(hel_file_id id, hel_file_id *out_id)
 static hel_ret hel_sign_area(hel_metadata *chunk, hel_file_id start_sector_id, bool all_chain, bool in_use)
 {
 	hel_ret ret;
-	uint32_t num_of_sectors = CHUNK_SIZE_IN_SECTORS(chunk);
+	HEL_BASE_TYPE num_of_sectors = CHUNK_SIZE_IN_SECTORS(chunk);
 
 	while(true)
 	{
@@ -207,9 +207,9 @@ static hel_ret hel_sign_area(hel_metadata *chunk, hel_file_id start_sector_id, b
  * 
  * @return the number of consecutive free sectors
  */
-static int hel_count_consecutive_free_sectors(hel_file_id id)
+static HEL_BASE_TYPE hel_count_consecutive_free_sectors(hel_file_id id)
 {
-	int ret = 0;
+	HEL_BASE_TYPE ret = 0;
 
 	assert(id < NUM_OF_SECTORS);
 
@@ -238,10 +238,10 @@ static int hel_count_consecutive_free_sectors(hel_file_id id)
  * 
  * @note this function is the main function that can be changed to optimize writes upon needs. currently it uses greedy implementation that chooses the first chunks.
  */
-static hel_ret hel_get_chunks_for_file(int size, chunk_data **chunks_arr, int *chunks_num)
+static hel_ret hel_get_chunks_for_file(HEL_BASE_TYPE size, chunk_data **chunks_arr, HEL_BASE_TYPE *chunks_num)
 {
 	hel_file_id new_file_id = 0;
-	int empty_sectors;
+	HEL_BASE_TYPE empty_sectors;
 	chunk_data *chunks_arr_tmp;
 	hel_ret ret;
 
@@ -262,7 +262,7 @@ static hel_ret hel_get_chunks_for_file(int size, chunk_data **chunks_arr, int *c
 		*chunks_arr = chunks_arr_tmp;
 		(*chunks_arr)[*chunks_num].id = new_file_id;
 
-		int size_in_empty = (empty_sectors * sector_size) - sizeof(hel_metadata);
+		HEL_BASE_TYPE size_in_empty = (empty_sectors * sector_size) - sizeof(hel_metadata);
 		if(size_in_empty >= size)
 		{ // Last chunk
 			(*chunks_arr)[*chunks_num].size = size;
@@ -297,11 +297,11 @@ static hel_ret hel_get_chunks_for_file(int size, chunk_data **chunks_arr, int *c
  * 
  * @return hel_success upon success, hel_XXXX_err otherwise.
  */
-static hel_ret hel_organize_chunks_arr(chunk_data *chunks_arr, int chunks_num)
+static hel_ret hel_organize_chunks_arr(chunk_data *chunks_arr, HEL_BASE_TYPE chunks_num)
 {
 	hel_ret ret;
 
-	for(int i = 0; i < chunks_num; i++)
+	for(HEL_BASE_TYPE i = 0; i < chunks_num; i++)
 	{
 		hel_metadata first_chunk, curr_chunk;
 		/*
@@ -314,8 +314,8 @@ static hel_ret hel_organize_chunks_arr(chunk_data *chunks_arr, int chunks_num)
 		 * if after not exist, else if first is fragmented
 		 */
 		bool need_to_update_first = false, need_to_update_first_and_end = false;
-		int empty_sectors = hel_count_consecutive_free_sectors(chunks_arr[i].id);
-		int needed_sectors = ROUND_UP_DEV(chunks_arr[i].size + sizeof(hel_metadata), sector_size);
+		HEL_BASE_TYPE empty_sectors = hel_count_consecutive_free_sectors(chunks_arr[i].id);
+		HEL_BASE_TYPE needed_sectors = ROUND_UP_DEV(chunks_arr[i].size + sizeof(hel_metadata), sector_size);
 		ret = mem_driver_read(chunks_arr[i].id * sector_size, sizeof(first_chunk), &first_chunk);
 		if(ret != hel_success)
 		{
@@ -392,7 +392,7 @@ static hel_ret hel_organize_chunks_arr(chunk_data *chunks_arr, int chunks_num)
  * 
  * @return hel_success upon success, hel_XXXX_err otherwise.
  */
-static hel_ret hel_write_to_chunk(int total_size, hel_file_id id, void **buff, int *size, int num, bool is_first, bool is_end, hel_file_id next_id)
+static hel_ret hel_write_to_chunk(HEL_BASE_TYPE total_size, hel_file_id id, void **buff, HEL_BASE_TYPE *size, HEL_BASE_TYPE num, bool is_first, bool is_end, hel_file_id next_id)
 {
 	hel_metadata new_file = 0;;
 	hel_ret ret;
@@ -404,7 +404,7 @@ static hel_ret hel_write_to_chunk(int total_size, hel_file_id id, void **buff, i
 	}
 	else
 	{
-		int needed_sectors = ROUND_UP_DEV(total_size + sizeof(hel_metadata), sector_size);
+		HEL_BASE_TYPE needed_sectors = ROUND_UP_DEV(total_size + sizeof(hel_metadata), sector_size);
 
 		META_NOT_END_SECTORS_SIZE_SET(new_file, needed_sectors);
 		META_IS_END_SET(new_file, 0);
@@ -539,13 +539,13 @@ hel_ret hel_format()
 	return ret;
 }
 
-hel_ret hel_create_and_write(void **in, int *size, int num, hel_file_id *out_id)
+hel_ret hel_create_and_write(void **in, HEL_BASE_TYPE *size, HEL_BASE_TYPE num, hel_file_id *out_id)
 {
-	int total_size = 0;
+	HEL_BASE_TYPE total_size = 0;
 	chunk_data *new_chunks_arr;
-	int chunks_num;
+	HEL_BASE_TYPE chunks_num;
 	hel_ret ret;
-	int curr_idx;
+	HEL_BASE_TYPE curr_idx;
 
 
 	if(NULL == out_id)
@@ -553,7 +553,7 @@ hel_ret hel_create_and_write(void **in, int *size, int num, hel_file_id *out_id)
 		return hel_param_err;
 	}
 
-	for(int i = 0; i < num; i++)
+	for(HEL_BASE_TYPE i = 0; i < num; i++)
 	{
 		total_size += size[i];
 	}
@@ -574,13 +574,13 @@ hel_ret hel_create_and_write(void **in, int *size, int num, hel_file_id *out_id)
 	// We are writing from end to start (due to power down protection), so pointing to the end.
 	curr_idx = num - 1;
 
-	for(int i = chunks_num - 1; i != -1; i--)
+	for(HEL_BASE_TYPE i = chunks_num - 1; i != -1; i--)
 	{
 		void *buffer_pointer_backup;
-		int size_backup;
-		int num_of_buffs_to_send = 0;
-		int write_size = new_chunks_arr[i].size;
-		int write_size_needed = write_size;
+		HEL_BASE_TYPE size_backup;
+		HEL_BASE_TYPE num_of_buffs_to_send = 0;
+		HEL_BASE_TYPE write_size = new_chunks_arr[i].size;
+		HEL_BASE_TYPE write_size_needed = write_size;
 		while(true)
 		{
 			num_of_buffs_to_send++;
@@ -627,7 +627,7 @@ hel_ret hel_create_and_write(void **in, int *size, int num, hel_file_id *out_id)
 	return hel_success;
 }
 
-hel_ret hel_read(hel_file_id id, void *_out, int begin, int size)
+hel_ret hel_read(hel_file_id id, void *_out, HEL_BASE_TYPE begin, HEL_BASE_TYPE size)
 {
 	uint8_t *out = _out;
 	hel_metadata read_file;
@@ -651,10 +651,10 @@ hel_ret hel_read(hel_file_id id, void *_out, int begin, int size)
 
 	while(size != 0)
 	{
-		int chunk_data_bytes = CHUNK_DATA_BYTES(&read_file);
-		int begin_offset = HEL_MIN(chunk_data_bytes, begin);
+		HEL_BASE_TYPE chunk_data_bytes = CHUNK_DATA_BYTES(&read_file);
+		HEL_BASE_TYPE begin_offset = HEL_MIN(chunk_data_bytes, begin);
 		begin -= begin_offset;
-		int read_len = (size > chunk_data_bytes - begin_offset) ? chunk_data_bytes - begin_offset: size;
+		HEL_BASE_TYPE read_len = (size > chunk_data_bytes - begin_offset) ? chunk_data_bytes - begin_offset: size;
 
 		if(read_len != 0)
 		{

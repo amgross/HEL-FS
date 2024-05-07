@@ -25,7 +25,7 @@ static_assert(sizeof(NAME3) == FILE_NAME_SIZE);
 #define MY_STR3 "foo bar foo bar\n"
 #define BIG_STR1 "LSKDMFOIWE43 43 434 3 RE WRF34563453!@#$&^&**&&^DSFKGMSOFDKMGSLKDFMERREWKRkmokmokKNOMOK$#$#@@@@!##$#DSFGDF"
 
-static hel_ret test_naming_create_and_write_one_helper(char name[FILE_NAME_SIZE], void *buff, int size, hel_file_id *id)
+static hel_ret test_naming_create_and_write_one_helper(char name[FILE_NAME_SIZE], void *buff, HEL_BASE_TYPE size, hel_file_id *id)
 {
 	return hel_naming_create_and_write(name, &buff, &size, 1, id);
 }
