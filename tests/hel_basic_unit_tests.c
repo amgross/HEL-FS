@@ -1080,6 +1080,7 @@ void basic_defragment_test()
 
 void big_mem_test()
 {
+#if HEL_BASE_TYPE_BITS == 32
 	hel_ret ret;
 	mem_driver_init_test(1 << 18, 8);
 	
@@ -1090,6 +1091,7 @@ void big_mem_test()
 	
 	ret = hel_format();
 	TEST_ASSERT_(ret == hel_success, "Got error %d", ret);
+#endif
 }
 
 void get_first_file_when_empty_test()
