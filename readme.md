@@ -16,3 +16,9 @@ Directory hirarchy:
 
 Critical things still missings:
 - Option to change file after first creation.
+
+Getting started:
+- run 'make full' from the project root directory, to ensure all tests are running successfully on your computer.
+- Change the defines at /kernel/hel_kernel_user_defines.h according your needs.
+- You can change tests on the tests directory to see if the system is OK for your needs, it suggested to start from "naming_wrapper_tests.c"
+- Create your memory driver according to /kernel/mem_driver.h, in first step it is suggested not to follow the instruction that needed for power down corruption avoidance (i.e. writing the atomic write atomically and in the end of the write).
