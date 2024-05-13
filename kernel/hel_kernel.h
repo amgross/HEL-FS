@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#include "hel_kernel_user_defines.h"
+
 typedef enum
 {
 	hel_success,
@@ -15,7 +17,19 @@ typedef enum
 	hel_file_not_exist_err,
 }hel_ret;
 
+#ifndef HEL_BASE_TYPE_BITS
+#define HEL_BASE_TYPE_BITS 32
+#endif
+
+#if HEL_BASE_TYPE_BITS == 16
+#define HEL_BASE_TYPE uint16_t
+#elif HEL_BASE_TYPE_BITS == 32
 #define HEL_BASE_TYPE uint32_t
+#elif HEL_BASE_TYPE_BITS == 64
+#define HEL_BASE_TYPE uint64_t
+#else
+#error "wrong HEL_BASE_TYPE_BITS, should be 16/32/64"
+#endif
 
 #define ATOMIC_WRITE_SIZE sizeof(HEL_BASE_TYPE)
 

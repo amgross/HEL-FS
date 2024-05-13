@@ -15,6 +15,13 @@
 static uint8_t *used_map;
 
 /*
+ * We have two bits that are constant, and the other are flexible.
+ * The two constant bits are is file start and is file end.
+ * The flexible bits depends on the is file end:
+ * if end: all bits declare how many !bytes! of data there is in the chunk,
+ * if is not end: Half of the bits are pointer to next chunk id (sector number) and the other half how many !sectors! current chunk has.
+ * 
+ * For example, if we are working with 32 bit:
  * hel_metadata_structure in bits:
  * 0-29 (30 bits):
  * 	if this is not end struct:
@@ -28,39 +35,48 @@ static uint8_t *used_map;
 typedef HEL_BASE_TYPE hel_metadata;
 static_assert(sizeof(hel_metadata) == ATOMIC_WRITE_SIZE);
 
-#define META_NOT_END_NEXT_MASK				0x00007FFF
+#define FLEX_BITS_NUM (HEL_BASE_TYPE_BITS - 2)
+
+
 #define META_NOT_END_NEXT_OFFSET			0
+#define META_NOT_END_NEXT_BITS_NUM			(FLEX_BITS_NUM / 2)
 
-#define META_NOT_END_SECTORS_SIZE_MASK		0x3FFF8000
-#define META_NOT_END_SECTORS_SIZE_OFFSET 	15
+#define META_NOT_END_SECTORS_SIZE_OFFSET 	(META_NOT_END_NEXT_OFFSET + META_NOT_END_NEXT_BITS_NUM)
+#define META_NOT_END_SECTORS_SIZE_BITS_NUM	(FLEX_BITS_NUM / 2)
+static_assert(META_NOT_END_NEXT_BITS_NUM == META_NOT_END_SECTORS_SIZE_OFFSET);
 
-#define MAX_SECTORS_NUM ((1 << 15) - 1) // This is for next id and sectors size will always fit in metadata
+#define MAX_SECTORS_NUM (((uint64_t)1 << META_NOT_END_SECTORS_SIZE_BITS_NUM) - 1) // This is for next id and sectors size will always fit in metadata
 
-#define META_END_BYTES_SIZE_MASK			0x3FFFFFFF
 #define META_END_BYTES_SIZE_OFFSET			0
+#define META_END_BYTES_SIZE_BITS_NUM		FLEX_BITS_NUM
+static_assert(META_END_BYTES_SIZE_OFFSET + META_END_BYTES_SIZE_BITS_NUM == META_NOT_END_SECTORS_SIZE_OFFSET + META_NOT_END_SECTORS_SIZE_BITS_NUM);
 
-#define MAX_BYTES_NUM ((1 << 30) - 1) // This is for bytes size will always fit in metadata
+#define MAX_BYTES_NUM						(((uint64_t)1 << META_END_BYTES_SIZE_BITS_NUM) - 1)
 
-#define META_IS_START_MASK					0x40000000
-#define META_IS_START_OFFSET				30
+#define META_IS_START_OFFSET				FLEX_BITS_NUM
+#define META_IS_START_BITS_NUM				1
+static_assert(META_IS_START_OFFSET == META_END_BYTES_SIZE_OFFSET + META_END_BYTES_SIZE_BITS_NUM);
 
-#define META_IS_END_MASK					0x80000000
-#define META_IS_END_OFFSET					31
+#define META_IS_END_OFFSET					(META_IS_START_OFFSET + 1)
+#define META_IS_END_BITS_NUM					1
+static_assert(META_IS_END_OFFSET + META_IS_END_BITS_NUM == HEL_BASE_TYPE_BITS);
 
-#define META_GETTER(meta, mask, offset) (((meta) & (mask)) >> offset)
-#define META_SETTER(meta, mask, offset, val) ((meta) = ((meta) & ~(mask)) | (val) << (offset))
+#define CREATE_BITMASK(bits_num, offset) ((((uint64_t)1 << (bits_num)) - 1) << (offset))
 
-#define META_NOT_END_NEXT_GET(meta)			META_GETTER(meta, META_NOT_END_NEXT_MASK, META_NOT_END_NEXT_OFFSET)
-#define META_NOT_END_SECTORS_SIZE_GET(meta)	META_GETTER(meta, META_NOT_END_SECTORS_SIZE_MASK, META_NOT_END_SECTORS_SIZE_OFFSET)
-#define META_END_BYTES_SIZE_GET(meta)		META_GETTER(meta, META_END_BYTES_SIZE_MASK, META_END_BYTES_SIZE_OFFSET)
-#define META_IS_START_GET(meta)				META_GETTER(meta, META_IS_START_MASK, META_IS_START_OFFSET)
-#define META_IS_END_GET(meta)				META_GETTER(meta, META_IS_END_MASK, META_IS_END_OFFSET)
+#define META_GETTER(meta, bits_num, offset) (((meta) & CREATE_BITMASK(bits_num, offset)) >> offset)
+#define META_SETTER(meta, bits_num, offset, val) ((meta) = ((meta) & ~CREATE_BITMASK(bits_num, offset)) | (uint64_t)(val) << (offset))
 
-#define META_NOT_END_NEXT_SET(meta, val)			META_SETTER(meta, META_NOT_END_NEXT_MASK, META_NOT_END_NEXT_OFFSET, val)
-#define META_NOT_END_SECTORS_SIZE_SET(meta, val)	META_SETTER(meta, META_NOT_END_SECTORS_SIZE_MASK, META_NOT_END_SECTORS_SIZE_OFFSET, val)
-#define META_END_BYTES_SIZE_SET(meta, val)			META_SETTER(meta, META_END_BYTES_SIZE_MASK, META_END_BYTES_SIZE_OFFSET, val)
-#define META_IS_START_SET(meta, val)				META_SETTER(meta, META_IS_START_MASK, META_IS_START_OFFSET, val)
-#define META_IS_END_SET(meta, val)					META_SETTER(meta, META_IS_END_MASK, META_IS_END_OFFSET, val)
+#define META_NOT_END_NEXT_GET(meta)			META_GETTER(meta, META_NOT_END_NEXT_BITS_NUM, META_NOT_END_NEXT_OFFSET)
+#define META_NOT_END_SECTORS_SIZE_GET(meta)	META_GETTER(meta, META_NOT_END_SECTORS_SIZE_BITS_NUM, META_NOT_END_SECTORS_SIZE_OFFSET)
+#define META_END_BYTES_SIZE_GET(meta)		META_GETTER(meta, META_END_BYTES_SIZE_BITS_NUM, META_END_BYTES_SIZE_OFFSET)
+#define META_IS_START_GET(meta)				META_GETTER(meta, META_IS_START_BITS_NUM, META_IS_START_OFFSET)
+#define META_IS_END_GET(meta)				META_GETTER(meta, META_IS_END_BITS_NUM, META_IS_END_OFFSET)
+
+#define META_NOT_END_NEXT_SET(meta, val)			META_SETTER(meta, META_NOT_END_NEXT_BITS_NUM, META_NOT_END_NEXT_OFFSET, val)
+#define META_NOT_END_SECTORS_SIZE_SET(meta, val)	META_SETTER(meta, META_NOT_END_SECTORS_SIZE_BITS_NUM, META_NOT_END_SECTORS_SIZE_OFFSET, val)
+#define META_END_BYTES_SIZE_SET(meta, val)			META_SETTER(meta, META_END_BYTES_SIZE_BITS_NUM, META_END_BYTES_SIZE_OFFSET, val)
+#define META_IS_START_SET(meta, val)				META_SETTER(meta, META_IS_START_BITS_NUM, META_IS_START_OFFSET, val)
+#define META_IS_END_SET(meta, val)					META_SETTER(meta, META_IS_END_BITS_NUM, META_IS_END_OFFSET, val)
 
 #define CHUNK_SIZE_IN_SECTORS(chunk) (!META_IS_END_GET(*chunk) ? META_NOT_END_SECTORS_SIZE_GET(*chunk) : ROUND_UP_DEV(META_END_BYTES_SIZE_GET(*chunk), sector_size))
 #define CHUNK_DATA_BYTES(chunk) (META_IS_END_GET(*chunk) ? META_END_BYTES_SIZE_GET(*chunk) - sizeof(hel_metadata) :(META_NOT_END_SECTORS_SIZE_GET(*chunk) * sector_size) - sizeof(hel_metadata))
@@ -574,7 +590,7 @@ hel_ret hel_create_and_write(void **in, HEL_BASE_TYPE *size, HEL_BASE_TYPE num, 
 	// We are writing from end to start (due to power down protection), so pointing to the end.
 	curr_idx = num - 1;
 
-	for(HEL_BASE_TYPE i = chunks_num - 1; i != -1; i--)
+	for(HEL_BASE_TYPE i = chunks_num - 1; i != (HEL_BASE_TYPE)-1; i--)
 	{
 		void *buffer_pointer_backup;
 		HEL_BASE_TYPE size_backup;
